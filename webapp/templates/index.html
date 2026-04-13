@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CBT-Discover · 认知行为治疗辅助系统</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;500;600&family=Noto+Sans+SC:wght@300;400;500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/css/style.css?v=2" />
+</head>
+<body>
+
+<!-- ── 顶部导航栏 ───────────────────────────────────────────────── -->
+<header class="navbar">
+  <div class="navbar-inner">
+    <div class="brand">
+      <span class="brand-icon">&#9775;</span>
+      <span class="brand-name">CBT-Discover</span>
+      <span class="brand-sub">认知行为治疗辅助系统</span>
+    </div>
+    <div class="navbar-actions">
+      <button id="btn-new-session" class="btn btn-ghost" title="开启新对话">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
+        新对话
+      </button>
+      <button id="btn-toggle-panel" class="btn btn-ghost" title="显示/隐藏认知评估面板">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18"/></svg>
+        评估面板
+      </button>
+    </div>
+  </div>
+</header>
+
+<!-- ── 主体布局 ─────────────────────────────────────────────────── -->
+<main class="layout">
+
+  <!-- ── 左侧：对话区域 ──────────────────────────────────────────── -->
+  <section class="chat-section">
+
+    <!-- 欢迎屏（会话开始前显示） -->
+    <div class="welcome-screen" id="welcome-screen">
+      <div class="welcome-card">
+        <div class="welcome-icon">&#10052;</div>
+        <h1 class="welcome-title">你好，我在这里</h1>
+        <p class="welcome-desc">
+          这里是一个安全、私密的倾诉空间。<br />
+          你可以分享任何让你感到困扰的事情，<br />
+          我会陪伴你一起梳理思路。
+        </p>
+        <div class="welcome-input-wrap">
+          <textarea
+            id="welcome-input"
+            class="welcome-input"
+            placeholder="你现在最想说的是……"
+            rows="3"
+          ></textarea>
+          <button id="btn-welcome-start" class="btn btn-primary btn-large">
+            开始倾诉
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 对话消息列表 -->
+    <div class="messages" id="messages" aria-live="polite"></div>
+
+    <!-- 底部输入栏 -->
+    <div class="input-bar" id="input-bar" style="display:none">
+      <div class="input-bar-inner">
+        <textarea
+          id="user-input"
+          class="user-input"
+          placeholder="说说你的感受……"
+          rows="1"
+          aria-label="输入消息"
+        ></textarea>
+        <button id="btn-send" class="btn btn-send" aria-label="发送">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+            <path d="M22 2L11 13"/>
+            <path d="M22 2L15 22l-4-9-9-4 20-7z"/>
+          </svg>
+        </button>
+      </div>
+      <p class="input-hint">Enter 发送 &nbsp;·&nbsp; Shift+Enter 换行</p>
+    </div>
+
+  </section>
+
+  <!-- ── 右侧：认知评估面板 ─────────────────────────────────────── -->
+  <aside class="panel" id="cbt-panel">
+    <div class="panel-header">
+      <h2 class="panel-title">
+        <span class="panel-title-icon">&#9670;</span>
+        认知评估表
+      </h2>
+      <span class="panel-badge" id="panel-badge">实时更新</span>
+    </div>
+
+    <div class="panel-body">
+
+      <!-- 情境 -->
+      <div class="cbt-card" id="card-situation">
+        <div class="cbt-card-label">
+          <span class="cbt-label-dot dot-situation"></span>
+          情境
+        </div>
+        <div class="cbt-card-value" id="val-situation">暂未识别</div>
+      </div>
+
+      <!-- 情绪 -->
+      <div class="cbt-card" id="card-emotion">
+        <div class="cbt-card-label">
+          <span class="cbt-label-dot dot-emotion"></span>
+          情绪
+        </div>
+        <div class="cbt-card-value" id="val-emotion">暂未识别</div>
+      </div>
+
+      <!-- 自动思维 -->
+      <div class="cbt-card" id="card-thought">
+        <div class="cbt-card-label">
+          <span class="cbt-label-dot dot-thought"></span>
+          自动思维
+        </div>
+        <div class="cbt-card-value" id="val-thought">暂未识别</div>
+      </div>
+
+      <!-- 认知扭曲 -->
+      <div class="cbt-card" id="card-distortion">
+        <div class="cbt-card-label">
+          <span class="cbt-label-dot dot-distortion"></span>
+          认知扭曲
+        </div>
+        <div class="cbt-card-value" id="val-distortion">暂未识别</div>
+      </div>
+
+    </div>
+
+    <div class="panel-footer">
+      <p class="panel-note">
+        以上信息由后台 AI 诊断系统自动提取，<br />仅用于辅助治疗，不会对外展示。
+      </p>
+    </div>
+  </aside>
+
+</main>
+
+<!-- ── 全局状态提示条 ────────────────────────────────────────────── -->
+<div class="toast" id="toast" role="alert" aria-live="assertive"></div>
+
+<!-- ── 正在思考指示器（注入到消息列表） ───────────────────────────── -->
+<template id="tpl-thinking">
+  <div class="msg msg-ai thinking" id="msg-thinking">
+    <div class="msg-avatar">&#9775;</div>
+    <div class="msg-bubble">
+      <span class="thinking-dot"></span>
+      <span class="thinking-dot"></span>
+      <span class="thinking-dot"></span>
+    </div>
+  </div>
+</template>
+
+<script src="/static/js/app.js?v=4"></script>
+</body>
+</html>
