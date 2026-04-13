@@ -1,0 +1,8 @@
+11:24:50 [INFO    ] cbt.webapp: [App] CBT-Discover Web Application initialized  debug=False
+11:24:50 [INFO    ] werkzeug: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:5000
+11:24:50 [INFO    ] werkzeug: [33mPress CTRL+C to quit[0m
+11:30:05 [INFO    ] werkzeug: 127.0.0.1 - - [30/Mar/2026 11:30:05] "GET / HTTP/1.1" 200 -
+11:30:06 [INFO    ] werkzeug: 127.0.0.1 - - [30/Mar/2026 11:30:06] "GET /static/css/style.css?v=2 HTTP/1.1" 200 -
+11:30:06 [INFO    ] werkzeug: 127.0.0.1 - - [30/Mar/2026 11:30:06] "GET /static/js/app.js?v=4 HTTP/1.1" 200 -
+11:30:09 [INFO    ] werkzeug: 127.0.0.1 - - [30/Mar/2026 11:30:09] "[33mGET /favicon.ico HTTP/1.1[0m" 404 -

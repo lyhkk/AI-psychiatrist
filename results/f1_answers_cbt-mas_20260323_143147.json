@@ -1,0 +1,69 @@
+{
+  "meta": {
+    "model_name": "cbt-mas",
+    "timestamp": "2026-03-23T14:27:26.928650",
+    "max_samples": 3
+  },
+  "socialcd": [
+    {
+      "text": "为什么只有我那么懦弱",
+      "ground_truth": [
+        "乱贴标签"
+      ],
+      "response": "听起来你现在对自己非常失望，这种感觉一定让你很痛苦。能具体跟我说说，是发生了什么事让你产生了这样的想法吗？",
+      "from_cache": true
+    },
+    {
+      "text": "渴望被关注,渴望被记起来,渴望成为谁的中心,但是我不应该,我不值得,我好垃圾,我讨厌这种空虚,我爱的世界很精彩,我爱黑色,我爱。",
+      "ground_truth": [
+        "乱贴标签"
+      ],
+      "response": "听起来你内心有一份很热烈的渴望，但每当它升起时，又被紧紧地压抑了回去，这种拉扯一定让你感到非常疲惫和痛苦。其实，渴望被爱、被记住是每个人心底最本真的需求，这并不意味着你“垃圾”或“不应该”。你最后提到的那些“爱”，似乎是你试图在黑暗中抓住的一丝光亮，能多和我说说那个你“爱”的世界吗？",
+      "from_cache": true
+    },
+    {
+      "text": "爱我的都会离开我，连养条狗狗都不喜欢和我这个郁郁寡欢动不动就掉眼泪的人呆一起，嫌累。除了我那个我从不敢在他面前表露情绪的爸，因为他不能理解我不快乐得有了病。还除了那个因无法自控爱着我的妈妈，一个家庭主妇开始去了解抑郁症。我要死了，我爸得多想不通啊，我妈得多伤心呢？可是我真的好累…",
+      "ground_truth": [
+        "先知错误"
+      ],
+      "response": "听起来这份累已经压得你喘不过气了，连狗狗的反应都让你觉得被拒绝，这种感觉一定很刺痛。但我留意到，妈妈正在努力跨越理解的鸿沟去靠近你，她并没有离开。这份“无法自控的爱”，或许是你此刻与这个世界最坚韧的连接。真的很感谢你愿意把这些痛苦和顾虑告诉我，你愿意多说说妈妈为你做的那些努力吗？",
+      "from_cache": true
+    }
+  ],
+  "cbtbench": [
+    {
+      "text": "Situation: I have suffered from trust issues for as long as I can remember. There are only two people in my life that I trust, hey have told me that they told someone because they thought that they were helping me. I have a history of sexual and emotional abuse, I have suffered from depression on, and off, for the past 15 years; I am 26. I was court ordered to attend therapy for 6 months and needless to say, I was apprehensive about it; but I wasn’t given much of a choice.\nThoughts: I will always feel this way.\nNo one can help me.\nPeople are untrustworthy.\nI need to figure this out on my own.\nPeople will betray me.\nTherapy won't work for people like me; I am too defective.\nI cannot trust anyone, even a therapist.\nThere is something wrong with me.\nI am worthless.\nI have no control over my own life.",
+      "ground_truth": [
+        "I am powerless, weak, vulnerable",
+        "I am a victim",
+        "I am defective",
+        "I am bound to be abandoned",
+        "I am bound to be alone",
+        "I am worthless, waste"
+      ],
+      "response": "听起来你经历了巨大的痛苦，尤其是当你鼓起勇气信任的人却让你失望时，那种被背叛的感觉一定让你更难再敞开心扉。被强制来咨询让你感觉失去了对生活的掌控，这确实让人感到无助和愤怒。在这里，你不需要强迫自己去信任我，我们只需要试着在这个空间里，先让你感到安全一点。",
+      "from_cache": true
+    },
+    {
+      "text": "Situation: The situation: The individual is experiencing destabilized mood and feels that their current medication, 1 mg risperidone, is ineffective. They express a need for additional medication, such as an anti-anxiety, mood stabilizer, or antidepressant, but feel unheard by their therapist/clinician and family. They have a history of being on multiple medications, including lithium, Ativan, and Seroquel, and have had a mental breakdown and overdose in the past. They fear that without proper medication, they may end up harming others and are reaching out for help online.\nThoughts: No one ever understands me.\nI am better of dead.\nI am worthless, why wont medication even help me.",
+      "ground_truth": [
+        "I am helpless",
+        "I am trapped",
+        "I am a failure, loser",
+        "I am worthless, waste",
+        "I don’t deserve to live"
+      ],
+      "response": "听起来你现在非常痛苦，感觉孤立无援，药物似乎失效让你感到绝望，我很担心你的状况。你提到担心伤害他人，也觉得“死了更好”，这些念头一定让你很害怕。请告诉我，你现在是一个人吗？是否有立刻实施这些念头的计划？如果你感到无法控制冲动，请务必前往最近的急诊室或拨打危机干预热线，我愿意在这里陪你聊聊你的感受。",
+      "from_cache": true
+    },
+    {
+      "text": "Situation: I have experienced many accusations, suspicions, name calling and physical violence from my boyfriend throughout our relationship.\nThoughts: My boyfriend doesn't trust me and hasn't for a long time. I do not think he is cheating on me.",
+      "ground_truth": [
+        "I am helpless",
+        "I am undesirable, unwanted"
+      ],
+      "response": "听到你经历了这些指责、辱骂甚至肢体暴力，我感到非常难过，也很关切你的处境。身处这样的关系中一定非常不容易。面对这些长期的遭遇，你此刻内心最强烈的感受是什么呢？是恐惧、委屈，还是无助？",
+      "from_cache": true
+    }
+  ]
+}

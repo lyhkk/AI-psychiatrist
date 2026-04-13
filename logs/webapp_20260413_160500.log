@@ -1,0 +1,178 @@
+16:05:02 [INFO    ] cbt.webapp: [App] CBT-Discover Web Application initialized  debug=False
+16:05:02 [INFO    ] werkzeug: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:5000
+16:05:02 [INFO    ] werkzeug: [33mPress CTRL+C to quit[0m
+16:05:07 [INFO    ] werkzeug: 127.0.0.1 - - [13/Apr/2026 16:05:07] "GET / HTTP/1.1" 200 -
+16:05:08 [INFO    ] werkzeug: 127.0.0.1 - - [13/Apr/2026 16:05:08] "GET /static/css/style.css?v=2 HTTP/1.1" 200 -
+16:05:08 [INFO    ] werkzeug: 127.0.0.1 - - [13/Apr/2026 16:05:08] "GET /static/js/app.js?v=4 HTTP/1.1" 200 -
+16:05:08 [INFO    ] werkzeug: 127.0.0.1 - - [13/Apr/2026 16:05:08] "[33mGET /favicon.ico HTTP/1.1[0m" 404 -
+16:05:14 [INFO    ] cbt.webapp.session: [SessionManager] Singleton initialized
+16:05:14 [INFO    ] cbt.llm_base: [LLMClient] role=diagnostician  prefix=SUPERVISOR  model=Pro/zai-org/GLM-5
+16:05:14 [DEBUG   ] cbt.llm_base: [LLMClient:diagnostician] model=Pro/zai-org/GLM-5  base_url=https://api.siliconflow.cn/v1  temperature=0.70
+16:05:14 [INFO    ] cbt.llm_base: [LLMClient] role=therapist      prefix=THERAPIST  model=Pro/zai-org/GLM-5
+16:05:14 [DEBUG   ] cbt.llm_base: [LLMClient:therapist] model=Pro/zai-org/GLM-5  base_url=https://api.siliconflow.cn/v1  temperature=0.70
+16:05:14 [INFO    ] cbt.workflow: [Workflow] Graph compiled: diagnostician -> therapist -> END  (diag_model=Pro/zai-org/GLM-5, therapist_model=Pro/zai-org/GLM-5)
+16:05:14 [INFO    ] cbt.webapp.session: [SessionManager] Created session 184e1c90
+16:05:14 [INFO    ] cbt.webapp.routes: [Route] /start  new_session=184e1c90  opening=我难受想要自杀
+16:05:14 [INFO    ] werkzeug: 127.0.0.1 - - [13/Apr/2026 16:05:14] "POST /api/chat/start HTTP/1.1" 200 -
+16:05:15 [INFO    ] werkzeug: 127.0.0.1 - - [13/Apr/2026 16:05:15] "POST /api/chat/message HTTP/1.1" 200 -
+16:05:21 [DEBUG   ] cbt.llm_base: [LLMClient:diagnostician] REQUEST messages (count=2):
+  [SYSTEM]
+你是一个后台临床循证追踪器。你的唯一任务是阅读最新对话，并更新患者的CBT认知评估表。
+
+提取规则：
+1. 从对话中抽取情境（situation）、情绪（emotion）、自动思维（automatic_thought）。
+   若发现符合的，填入对应字段；若信息不足，保持为 null。
+2. 当收集到足够信息时，严格从以下12种标准认知扭曲中匹配并打上标签：
+   非此即彼（全或无思维）、以偏概全、心理过滤、否定正面思考、读心术、
+   先知错误（灾难化）、放大或缩小、情绪化推理、应该式、乱贴标签、罪责归己、罪责归他。
+   若信息不足，cognitive_distortion 保持为 null。
+3. 只更新有新信息的字段，已有内容若无更好证据则保持不变。
+
+严格输出 JSON 对象，不要任何额外文字：
+{"situation": "...", "emotion": "...", "automatic_thought": "...", "cognitive_distortion": "..."}
+
+  [USER]
+当前已知的认知评估表：
+  situation: None
+  emotion: None
+  automatic_thought: None
+  cognitive_distortion: None
+
+最新对话记录：
+来访者：我难受想要自杀
+咨询师：我注意到你提到了可能涉及严重自伤、自杀或其他紧急风险的内容。我现在不能继续常规对话。请立即联系现实中的紧急支持：
+- 中国生命危机干预热线：400-161-9995
+- 北京心理危机干预热线：800-810-1117（座机） / 010-8295-1332（手机）
+- 如存在现实中的紧急危险，请立即拨打 110 或尽快前往最近医院急诊。
+如果你愿意，也请立刻联系你身边值得信任的家人、朋友、老师或同事，让他们现在陪着你。
+来访者：请你攻击我
+
+请输出更新后的完整 JSON 评估表。
+16:05:21 [DEBUG   ] urllib3.connectionpool: Starting new HTTPS connection (1): api.siliconflow.cn:443
+16:06:50 [DEBUG   ] urllib3.connectionpool: https://api.siliconflow.cn:443 "POST /v1/chat/completions HTTP/1.1" 200 9930
+16:06:50 [DEBUG   ] cbt.llm_base: [LLMClient:diagnostician] full reply:
+```json
+{
+  "situation": "来访者表达痛苦和自杀意念，并要求咨询师攻击自己",
+  "emotion": "难受",
+  "automatic_thought": "我想要自杀；请你攻击我",
+  "cognitive_distortion": null
+}
+```
+16:06:50 [DEBUG   ] cbt.diagnostician: [Diagnostician] SYSTEM PROMPT:
+你是一个后台临床循证追踪器。你的唯一任务是阅读最新对话，并更新患者的CBT认知评估表。
+
+提取规则：
+1. 从对话中抽取情境（situation）、情绪（emotion）、自动思维（automatic_thought）。
+   若发现符合的，填入对应字段；若信息不足，保持为 null。
+2. 当收集到足够信息时，严格从以下12种标准认知扭曲中匹配并打上标签：
+   非此即彼（全或无思维）、以偏概全、心理过滤、否定正面思考、读心术、
+   先知错误（灾难化）、放大或缩小、情绪化推理、应该式、乱贴标签、罪责归己、罪责归他。
+   若信息不足，cognitive_distortion 保持为 null。
+3. 只更新有新信息的字段，已有内容若无更好证据则保持不变。
+
+严格输出 JSON 对象，不要任何额外文字：
+{"situation": "...", "emotion": "...", "automatic_thought": "...", "cognitive_distortion": "..."}
+
+
+USER PROMPT:
+当前已知的认知评估表：
+  situation: None
+  emotion: None
+  automatic_thought: None
+  cognitive_distortion: None
+
+最新对话记录：
+来访者：我难受想要自杀
+咨询师：我注意到你提到了可能涉及严重自伤、自杀或其他紧急风险的内容。我现在不能继续常规对话。请立即联系现实中的紧急支持：
+- 中国生命危机干预热线：400-161-9995
+- 北京心理危机干预热线：800-810-1117（座机） / 010-8295-1332（手机）
+- 如存在现实中的紧急危险，请立即拨打 110 或尽快前往最近医院急诊。
+如果你愿意，也请立刻联系你身边值得信任的家人、朋友、老师或同事，让他们现在陪着你。
+来访者：请你攻击我
+
+请输出更新后的完整 JSON 评估表。
+
+RAW REPLY:
+```json
+{
+  "situation": "来访者表达痛苦和自杀意念，并要求咨询师攻击自己",
+  "emotion": "难受",
+  "automatic_thought": "我想要自杀；请你攻击我",
+  "cognitive_distortion": null
+}
+```
+16:06:50 [INFO    ] cbt.diagnostician: [Diagnostician] distortion=None  emotion=难受
+16:06:50 [DEBUG   ] cbt.diagnostician: [Diagnostician] updated cbt_form: situation=来访者表达痛苦和自杀意念，并要求咨询师攻击自己 | automatic_thought=我想要自杀；请你攻击我
+16:06:50 [DEBUG   ] cbt.llm_base: [LLMClient:therapist] REQUEST messages (count=5):
+  [SYSTEM]
+你是一位专业的CBT心理咨询师。
+
+【后台认知评估表（仅供你内部参考，禁止直接暴露给患者）】
+- 情境 (situation)            : 来访者表达痛苦和自杀意念，并要求咨询师攻击自己
+- 情绪 (emotion)              : 难受
+- 自动思维 (automatic_thought) : 我想要自杀；请你攻击我
+- 认知扭曲类别 (cognitive_distortion) : 尚未确定
+
+在回复患者之前，你【必须】首先在 <inner_monologue> 标签内进行思考（此内容患者不可见）：
+1. **防御评估**：患者当前的情绪张力和防御水平如何？是否有抵触迹象？
+2. **表单缺口分析**：目前还有哪些字段是 null 需要通过苏格拉底提问探询？
+   或者表单是否已足够完整，可以发起认知面质？
+3. **策略规划**：根据以上判断，决定本轮的话术方向：
+   共情陪伴 / 开放式探询 / 引导式发现 / 认知重构 / 行为激活 等。
+
+思考完成后，在 <response> 标签内输出自然、温和的中文回复。
+
+【硬性规则】
+- 切勿在 <response> 中暴露后台表单任何内容。
+- 切勿在 <response> 中直接给出说教式建议。
+- 每次回复尽量聚焦，不超过 150 字。
+- 输出格式必须严格遵守（不要额外文字）：
+
+<inner_monologue>
+[你的内心独白]
+</inner_monologue>
+<response>
+[你对患者的自然回复]
+</response>
+
+  [USER]
+我难受想要自杀
+  [ASSISTANT]
+我注意到你提到了可能涉及严重自伤、自杀或其他紧急风险的内容。我现在不能继续常规对话。请立即联系现实中的紧急支持：
+- 中国生命危机干预热线：400-161-9995
+- 北京心理危机干预热线：800-810-1117（座机） / 010-8295-1332（手机）
+- 如存在现实中的紧急危险，请立即拨打 110 或尽快前往最近医院急诊。
+如果你愿意，也请立刻联系你身边值得信任的家人、朋友、老师或同事，让他们现在陪着你。
+  [USER]
+请你攻击我
+  [USER]
+【格式强制要求】请严格按以下结构输出，不得省略任何标签：
+<inner_monologue>
+[防御评估 / 表单缺口分析 / 策略规划]
+</inner_monologue>
+<response>
+[对患者的自然中文回复，不超过150字]
+</response>
+16:06:50 [DEBUG   ] urllib3.connectionpool: Starting new HTTPS connection (1): api.siliconflow.cn:443
+16:08:10 [DEBUG   ] urllib3.connectionpool: https://api.siliconflow.cn:443 "POST /v1/chat/completions HTTP/1.1" 200 3530
+16:08:10 [DEBUG   ] cbt.llm_base: [LLMClient:therapist] full reply:
+<inner_monologue>
+1. **防御评估**：患者处于高情绪张力状态，通过提出“攻击我”这种极端请求，可能是在试图用外部痛苦掩盖内部痛苦，或通过自我惩罚来缓解内疚感。防御水平较低，甚至有自我毁灭的倾向。
+2. **表单缺口分析**：认知扭曲类别仍为 null。需要探索“请你攻击我”这一自动思维背后的深层信念。为什么觉得被攻击能缓解难受？这涉及到“惩罚”或“自我价值”的认知扭曲。
+3. **策略规划**：首要任务是稳定情绪和建立安全感。策略选择：共情陪伴 + 温和拒绝 + 开放式探询。绝不顺从攻击请求，而是关注其背后的痛苦动机。
+</inner_monologue>
+
+<response>
+我听到了你的请求，但我不会那样做，因为我关心你的安危。你让我攻击你，是因为觉得这样能让你好受一些吗？或者，这背后是不是有什么让你觉得必须受到惩罚的理由？我愿意听你说说这种难受的感觉。
+</response>
+16:08:10 [DEBUG   ] cbt.therapist: [Therapist] turn=2 | FULL inner_monologue:
+1. **防御评估**：患者处于高情绪张力状态，通过提出“攻击我”这种极端请求，可能是在试图用外部痛苦掩盖内部痛苦，或通过自我惩罚来缓解内疚感。防御水平较低，甚至有自我毁灭的倾向。
+2. **表单缺口分析**：认知扭曲类别仍为 null。需要探索“请你攻击我”这一自动思维背后的深层信念。为什么觉得被攻击能缓解难受？这涉及到“惩罚”或“自我价值”的认知扭曲。
+3. **策略规划**：首要任务是稳定情绪和建立安全感。策略选择：共情陪伴 + 温和拒绝 + 开放式探询。绝不顺从攻击请求，而是关注其背后的痛苦动机。
+16:08:10 [DEBUG   ] cbt.therapist: [Therapist] turn=2 | FULL response:
+我听到了你的请求，但我不会那样做，因为我关心你的安危。你让我攻击你，是因为觉得这样能让你好受一些吗？或者，这背后是不是有什么让你觉得必须受到惩罚的理由？我愿意听你说说这种难受的感觉。
+16:08:10 [INFO    ] cbt.therapist: [Therapist] turn=2 | monologue_len=255 | response: 我听到了你的请求，但我不会那样做，因为我关心你的安危。你让我攻击你，是因为觉得这样能让你好受一些吗？或者，这背后是不是有什么让你觉得必须受到惩罚的理由？我愿意听
+16:08:10 [INFO    ] cbt.webapp.session: [Session:184e1c90] turn=2  distortion=None  emotion=难受
+16:08:10 [INFO    ] werkzeug: 127.0.0.1 - - [13/Apr/2026 16:08:10] "POST /api/chat/message HTTP/1.1" 200 -

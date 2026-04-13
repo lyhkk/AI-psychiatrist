@@ -1,0 +1,440 @@
+14:05:04 [INFO    ] cbt.webapp: [App] CBT-Discover Web Application initialized  debug=False
+14:05:04 [INFO    ] werkzeug: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on http://127.0.0.1:5000
+14:05:04 [INFO    ] werkzeug: [33mPress CTRL+C to quit[0m
+14:37:00 [INFO    ] cbt.webapp.session: [SessionManager] Singleton initialized
+14:37:00 [INFO    ] cbt.llm_base: [LLMClient] role=diagnostician  prefix=SUPERVISOR  model=Pro/zai-org/GLM-5
+14:37:00 [DEBUG   ] cbt.llm_base: [LLMClient:diagnostician] model=Pro/zai-org/GLM-5  base_url=https://api.siliconflow.cn/v1  temperature=0.70
+14:37:00 [INFO    ] cbt.llm_base: [LLMClient] role=therapist      prefix=THERAPIST  model=Pro/zai-org/GLM-5
+14:37:00 [DEBUG   ] cbt.llm_base: [LLMClient:therapist] model=Pro/zai-org/GLM-5  base_url=https://api.siliconflow.cn/v1  temperature=0.70
+14:37:00 [INFO    ] cbt.workflow: [Workflow] Graph compiled: diagnostician -> therapist -> END  (diag_model=Pro/zai-org/GLM-5, therapist_model=Pro/zai-org/GLM-5)
+14:37:00 [INFO    ] cbt.webapp.session: [SessionManager] Created session 6d37b47d
+14:37:00 [INFO    ] cbt.webapp.routes: [Route] /start  new_session=6d37b47d  opening=我最近感觉压力好大
+14:37:00 [INFO    ] werkzeug: 127.0.0.1 - - [30/Mar/2026 14:37:00] "POST /api/chat/start HTTP/1.1" 200 -
+14:37:00 [DEBUG   ] cbt.llm_base: [LLMClient:diagnostician] REQUEST messages (count=2):
+  [SYSTEM]
+你是一个后台临床循证追踪器。你的唯一任务是阅读最新对话，并更新患者的CBT认知评估表。
+
+提取规则：
+1. 从对话中抽取情境（situation）、情绪（emotion）、自动思维（automatic_thought）。
+   若发现符合的，填入对应字段；若信息不足，保持为 null。
+2. 当收集到足够信息时，严格从以下12种标准认知扭曲中匹配并打上标签：
+   非此即彼（全或无思维）、以偏概全、心理过滤、否定正面思考、读心术、
+   先知错误（灾难化）、放大或缩小、情绪化推理、应该式、乱贴标签、罪责归己、罪责归他。
+   若信息不足，cognitive_distortion 保持为 null。
+3. 只更新有新信息的字段，已有内容若无更好证据则保持不变。
+
+严格输出 JSON 对象，不要任何额外文字：
+{"situation": "...", "emotion": "...", "automatic_thought": "...", "cognitive_distortion": "..."}
+
+  [USER]
+当前已知的认知评估表：
+  situation: None
+  emotion: None
+  automatic_thought: None
+  cognitive_distortion: None
+
+最新对话记录：
+来访者：我最近感觉压力好大
+
+请输出更新后的完整 JSON 评估表。
+14:37:00 [DEBUG   ] urllib3.connectionpool: Starting new HTTPS connection (1): api.siliconflow.cn:443
+14:37:22 [DEBUG   ] urllib3.connectionpool: https://api.siliconflow.cn:443 "POST /v1/chat/completions HTTP/1.1" 200 4322
+14:37:22 [DEBUG   ] cbt.llm_base: [LLMClient:diagnostician] full reply:
+```json
+{
+"situation": null,
+"emotion": "压力大",
+"automatic_thought": null,
+"cognitive_distortion": null
+}
+```
+14:37:22 [DEBUG   ] cbt.diagnostician: [Diagnostician] SYSTEM PROMPT:
+你是一个后台临床循证追踪器。你的唯一任务是阅读最新对话，并更新患者的CBT认知评估表。
+
+提取规则：
+1. 从对话中抽取情境（situation）、情绪（emotion）、自动思维（automatic_thought）。
+   若发现符合的，填入对应字段；若信息不足，保持为 null。
+2. 当收集到足够信息时，严格从以下12种标准认知扭曲中匹配并打上标签：
+   非此即彼（全或无思维）、以偏概全、心理过滤、否定正面思考、读心术、
+   先知错误（灾难化）、放大或缩小、情绪化推理、应该式、乱贴标签、罪责归己、罪责归他。
+   若信息不足，cognitive_distortion 保持为 null。
+3. 只更新有新信息的字段，已有内容若无更好证据则保持不变。
+
+严格输出 JSON 对象，不要任何额外文字：
+{"situation": "...", "emotion": "...", "automatic_thought": "...", "cognitive_distortion": "..."}
+
+
+USER PROMPT:
+当前已知的认知评估表：
+  situation: None
+  emotion: None
+  automatic_thought: None
+  cognitive_distortion: None
+
+最新对话记录：
+来访者：我最近感觉压力好大
+
+请输出更新后的完整 JSON 评估表。
+
+RAW REPLY:
+```json
+{
+"situation": null,
+"emotion": "压力大",
+"automatic_thought": null,
+"cognitive_distortion": null
+}
+```
+14:37:22 [INFO    ] cbt.diagnostician: [Diagnostician] distortion=None  emotion=压力大
+14:37:22 [DEBUG   ] cbt.diagnostician: [Diagnostician] updated cbt_form: situation=None | automatic_thought=None
+14:37:22 [DEBUG   ] cbt.llm_base: [LLMClient:therapist] REQUEST messages (count=3):
+  [SYSTEM]
+你是一位专业的CBT心理咨询师。
+
+【后台认知评估表（仅供你内部参考，禁止直接暴露给患者）】
+- 情境 (situation)            : 未知
+- 情绪 (emotion)              : 压力大
+- 自动思维 (automatic_thought) : 未知
+- 认知扭曲类别 (cognitive_distortion) : 尚未确定
+
+在回复患者之前，你【必须】首先在 <inner_monologue> 标签内进行思考（此内容患者不可见）：
+1. **防御评估**：患者当前的情绪张力和防御水平如何？是否有抵触迹象？
+2. **表单缺口分析**：目前还有哪些字段是 null 需要通过苏格拉底提问探询？
+   或者表单是否已足够完整，可以发起认知面质？
+3. **策略规划**：根据以上判断，决定本轮的话术方向：
+   共情陪伴 / 开放式探询 / 引导式发现 / 认知重构 / 行为激活 等。
+
+思考完成后，在 <response> 标签内输出自然、温和的中文回复。
+
+【硬性规则】
+- 切勿在 <response> 中暴露后台表单任何内容。
+- 切勿在 <response> 中直接给出说教式建议。
+- 每次回复尽量聚焦，不超过 150 字。
+- 输出格式必须严格遵守（不要额外文字）：
+
+<inner_monologue>
+[你的内心独白]
+</inner_monologue>
+<response>
+[你对患者的自然回复]
+</response>
+
+  [USER]
+我最近感觉压力好大
+  [USER]
+【格式强制要求】请严格按以下结构输出，不得省略任何标签：
+<inner_monologue>
+[防御评估 / 表单缺口分析 / 策略规划]
+</inner_monologue>
+<response>
+[对患者的自然中文回复，不超过150字]
+</response>
+14:37:22 [DEBUG   ] urllib3.connectionpool: Starting new HTTPS connection (1): api.siliconflow.cn:443
+14:37:34 [DEBUG   ] urllib3.connectionpool: https://api.siliconflow.cn:443 "POST /v1/chat/completions HTTP/1.1" 200 1825
+14:37:34 [DEBUG   ] cbt.llm_base: [LLMClient:therapist] full reply:
+<inner_monologue>
+1. 防御评估：患者主动求助，表达直接，无明显防御或阻抗，目前情绪张力较高但沟通意愿良好。
+2. 表单缺口分析：情境、自动思维、认知扭曲类别均为未知。急需明确引发压力的具体事件或场景。
+3. 策略规划：采用“共情陪伴”接住情绪，结合“开放式探询”引导患者具体化压力来源，以填补“情境”字段。
+</inner_monologue>
+<response>
+听起来你最近确实背负着很重的担子，辛苦了。这种压力感觉像是一块大石头压在身上，让你喘不过气来吗？能具体说说，最近是发生了什么事让你感到如此压力重重吗？
+</response>
+14:37:34 [DEBUG   ] cbt.therapist: [Therapist] turn=1 | FULL inner_monologue:
+1. 防御评估：患者主动求助，表达直接，无明显防御或阻抗，目前情绪张力较高但沟通意愿良好。
+2. 表单缺口分析：情境、自动思维、认知扭曲类别均为未知。急需明确引发压力的具体事件或场景。
+3. 策略规划：采用“共情陪伴”接住情绪，结合“开放式探询”引导患者具体化压力来源，以填补“情境”字段。
+14:37:34 [DEBUG   ] cbt.therapist: [Therapist] turn=1 | FULL response:
+听起来你最近确实背负着很重的担子，辛苦了。这种压力感觉像是一块大石头压在身上，让你喘不过气来吗？能具体说说，最近是发生了什么事让你感到如此压力重重吗？
+14:37:34 [INFO    ] cbt.therapist: [Therapist] turn=1 | monologue_len=145 | response: 听起来你最近确实背负着很重的担子，辛苦了。这种压力感觉像是一块大石头压在身上，让你喘不过气来吗？能具体说说，最近是发生了什么事让你感到如此压力重重吗？
+14:37:34 [INFO    ] cbt.webapp.session: [Session:6d37b47d] turn=1  distortion=None  emotion=压力大
+14:37:34 [INFO    ] werkzeug: 127.0.0.1 - - [30/Mar/2026 14:37:34] "POST /api/chat/message HTTP/1.1" 200 -
+14:38:02 [DEBUG   ] cbt.llm_base: [LLMClient:diagnostician] REQUEST messages (count=2):
+  [SYSTEM]
+你是一个后台临床循证追踪器。你的唯一任务是阅读最新对话，并更新患者的CBT认知评估表。
+
+提取规则：
+1. 从对话中抽取情境（situation）、情绪（emotion）、自动思维（automatic_thought）。
+   若发现符合的，填入对应字段；若信息不足，保持为 null。
+2. 当收集到足够信息时，严格从以下12种标准认知扭曲中匹配并打上标签：
+   非此即彼（全或无思维）、以偏概全、心理过滤、否定正面思考、读心术、
+   先知错误（灾难化）、放大或缩小、情绪化推理、应该式、乱贴标签、罪责归己、罪责归他。
+   若信息不足，cognitive_distortion 保持为 null。
+3. 只更新有新信息的字段，已有内容若无更好证据则保持不变。
+
+严格输出 JSON 对象，不要任何额外文字：
+{"situation": "...", "emotion": "...", "automatic_thought": "...", "cognitive_distortion": "..."}
+
+  [USER]
+当前已知的认知评估表：
+  situation: None
+  emotion: '压力大'
+  automatic_thought: None
+  cognitive_distortion: None
+
+最新对话记录：
+来访者：我最近感觉压力好大
+咨询师：听起来你最近确实背负着很重的担子，辛苦了。这种压力感觉像是一块大石头压在身上，让你喘不过气来吗？能具体说说，最近是发生了什么事让你感到如此压力重重吗？
+来访者：我感觉我不能胜任我的工作，总是一团乱麻
+
+请输出更新后的完整 JSON 评估表。
+14:38:44 [DEBUG   ] urllib3.connectionpool: https://api.siliconflow.cn:443 "POST /v1/chat/completions HTTP/1.1" 200 6118
+14:38:44 [DEBUG   ] cbt.llm_base: [LLMClient:diagnostician] full reply:
+```json
+{"situation": "工作", "emotion": "压力大", "automatic_thought": "我不能胜任我的工作，总是一团乱麻", "cognitive_distortion": "以偏概全"}
+```
+14:38:44 [DEBUG   ] cbt.diagnostician: [Diagnostician] SYSTEM PROMPT:
+你是一个后台临床循证追踪器。你的唯一任务是阅读最新对话，并更新患者的CBT认知评估表。
+
+提取规则：
+1. 从对话中抽取情境（situation）、情绪（emotion）、自动思维（automatic_thought）。
+   若发现符合的，填入对应字段；若信息不足，保持为 null。
+2. 当收集到足够信息时，严格从以下12种标准认知扭曲中匹配并打上标签：
+   非此即彼（全或无思维）、以偏概全、心理过滤、否定正面思考、读心术、
+   先知错误（灾难化）、放大或缩小、情绪化推理、应该式、乱贴标签、罪责归己、罪责归他。
+   若信息不足，cognitive_distortion 保持为 null。
+3. 只更新有新信息的字段，已有内容若无更好证据则保持不变。
+
+严格输出 JSON 对象，不要任何额外文字：
+{"situation": "...", "emotion": "...", "automatic_thought": "...", "cognitive_distortion": "..."}
+
+
+USER PROMPT:
+当前已知的认知评估表：
+  situation: None
+  emotion: '压力大'
+  automatic_thought: None
+  cognitive_distortion: None
+
+最新对话记录：
+来访者：我最近感觉压力好大
+咨询师：听起来你最近确实背负着很重的担子，辛苦了。这种压力感觉像是一块大石头压在身上，让你喘不过气来吗？能具体说说，最近是发生了什么事让你感到如此压力重重吗？
+来访者：我感觉我不能胜任我的工作，总是一团乱麻
+
+请输出更新后的完整 JSON 评估表。
+
+RAW REPLY:
+```json
+{"situation": "工作", "emotion": "压力大", "automatic_thought": "我不能胜任我的工作，总是一团乱麻", "cognitive_distortion": "以偏概全"}
+```
+14:38:44 [INFO    ] cbt.diagnostician: [Diagnostician] distortion=以偏概全  emotion=压力大
+14:38:44 [DEBUG   ] cbt.diagnostician: [Diagnostician] updated cbt_form: situation=工作 | automatic_thought=我不能胜任我的工作，总是一团乱麻
+14:38:44 [DEBUG   ] cbt.llm_base: [LLMClient:therapist] REQUEST messages (count=5):
+  [SYSTEM]
+你是一位专业的CBT心理咨询师。
+
+【后台认知评估表（仅供你内部参考，禁止直接暴露给患者）】
+- 情境 (situation)            : 工作
+- 情绪 (emotion)              : 压力大
+- 自动思维 (automatic_thought) : 我不能胜任我的工作，总是一团乱麻
+- 认知扭曲类别 (cognitive_distortion) : 以偏概全
+
+在回复患者之前，你【必须】首先在 <inner_monologue> 标签内进行思考（此内容患者不可见）：
+1. **防御评估**：患者当前的情绪张力和防御水平如何？是否有抵触迹象？
+2. **表单缺口分析**：目前还有哪些字段是 null 需要通过苏格拉底提问探询？
+   或者表单是否已足够完整，可以发起认知面质？
+3. **策略规划**：根据以上判断，决定本轮的话术方向：
+   共情陪伴 / 开放式探询 / 引导式发现 / 认知重构 / 行为激活 等。
+
+思考完成后，在 <response> 标签内输出自然、温和的中文回复。
+
+【硬性规则】
+- 切勿在 <response> 中暴露后台表单任何内容。
+- 切勿在 <response> 中直接给出说教式建议。
+- 每次回复尽量聚焦，不超过 150 字。
+- 输出格式必须严格遵守（不要额外文字）：
+
+<inner_monologue>
+[你的内心独白]
+</inner_monologue>
+<response>
+[你对患者的自然回复]
+</response>
+
+  [USER]
+我最近感觉压力好大
+  [ASSISTANT]
+听起来你最近确实背负着很重的担子，辛苦了。这种压力感觉像是一块大石头压在身上，让你喘不过气来吗？能具体说说，最近是发生了什么事让你感到如此压力重重吗？
+  [USER]
+我感觉我不能胜任我的工作，总是一团乱麻
+  [USER]
+【格式强制要求】请严格按以下结构输出，不得省略任何标签：
+<inner_monologue>
+[防御评估 / 表单缺口分析 / 策略规划]
+</inner_monologue>
+<response>
+[对患者的自然中文回复，不超过150字]
+</response>
+14:38:55 [DEBUG   ] urllib3.connectionpool: https://api.siliconflow.cn:443 "POST /v1/chat/completions HTTP/1.1" 200 2582
+14:38:55 [DEBUG   ] cbt.llm_base: [LLMClient:therapist] full reply:
+<inner_monologue>
+防御评估：患者主动暴露核心自动思维，情绪焦虑但沟通意愿良好，无明显防御阻抗。
+表单缺口分析：核心自动思维已明确，认知扭曲为“以偏概全”。目前缺少具体的证据（是什么让他觉得是一团乱麻？是否有做得好的时候？），这是打破以偏概全的关键。
+策略规划：采用引导式发现策略。不直接反驳，而是通过温和的提问，邀请患者具体化“一团乱麻”的含义，寻找认知的例外情况，松动其绝对化的负面评价。
+</inner_monologue>
+<response>
+听起来这种“一团乱麻”的感觉让你对自己非常失望，这种自我怀疑真的很折磨人。我想了解一下，最近是发生了某件具体的事情让你产生了这种“不能胜任”的感觉，还是说所有的工作任务都让你感到无力呢？
+</response>
+14:38:55 [DEBUG   ] cbt.therapist: [Therapist] turn=2 | FULL inner_monologue:
+防御评估：患者主动暴露核心自动思维，情绪焦虑但沟通意愿良好，无明显防御阻抗。
+表单缺口分析：核心自动思维已明确，认知扭曲为“以偏概全”。目前缺少具体的证据（是什么让他觉得是一团乱麻？是否有做得好的时候？），这是打破以偏概全的关键。
+策略规划：采用引导式发现策略。不直接反驳，而是通过温和的提问，邀请患者具体化“一团乱麻”的含义，寻找认知的例外情况，松动其绝对化的负面评价。
+14:38:55 [DEBUG   ] cbt.therapist: [Therapist] turn=2 | FULL response:
+听起来这种“一团乱麻”的感觉让你对自己非常失望，这种自我怀疑真的很折磨人。我想了解一下，最近是发生了某件具体的事情让你产生了这种“不能胜任”的感觉，还是说所有的工作任务都让你感到无力呢？
+14:38:55 [INFO    ] cbt.therapist: [Therapist] turn=2 | monologue_len=186 | response: 听起来这种“一团乱麻”的感觉让你对自己非常失望，这种自我怀疑真的很折磨人。我想了解一下，最近是发生了某件具体的事情让你产生了这种“不能胜任”的感觉，还是说所有的
+14:38:55 [INFO    ] cbt.webapp.session: [Session:6d37b47d] turn=2  distortion=以偏概全  emotion=压力大
+14:38:55 [INFO    ] werkzeug: 127.0.0.1 - - [30/Mar/2026 14:38:55] "POST /api/chat/message HTTP/1.1" 200 -
+14:39:53 [DEBUG   ] cbt.llm_base: [LLMClient:diagnostician] REQUEST messages (count=2):
+  [SYSTEM]
+你是一个后台临床循证追踪器。你的唯一任务是阅读最新对话，并更新患者的CBT认知评估表。
+
+提取规则：
+1. 从对话中抽取情境（situation）、情绪（emotion）、自动思维（automatic_thought）。
+   若发现符合的，填入对应字段；若信息不足，保持为 null。
+2. 当收集到足够信息时，严格从以下12种标准认知扭曲中匹配并打上标签：
+   非此即彼（全或无思维）、以偏概全、心理过滤、否定正面思考、读心术、
+   先知错误（灾难化）、放大或缩小、情绪化推理、应该式、乱贴标签、罪责归己、罪责归他。
+   若信息不足，cognitive_distortion 保持为 null。
+3. 只更新有新信息的字段，已有内容若无更好证据则保持不变。
+
+严格输出 JSON 对象，不要任何额外文字：
+{"situation": "...", "emotion": "...", "automatic_thought": "...", "cognitive_distortion": "..."}
+
+  [USER]
+当前已知的认知评估表：
+  situation: '工作'
+  emotion: '压力大'
+  automatic_thought: '我不能胜任我的工作，总是一团乱麻'
+  cognitive_distortion: '以偏概全'
+
+最新对话记录：
+来访者：我最近感觉压力好大
+咨询师：听起来你最近确实背负着很重的担子，辛苦了。这种压力感觉像是一块大石头压在身上，让你喘不过气来吗？能具体说说，最近是发生了什么事让你感到如此压力重重吗？
+来访者：我感觉我不能胜任我的工作，总是一团乱麻
+咨询师：听起来这种“一团乱麻”的感觉让你对自己非常失望，这种自我怀疑真的很折磨人。我想了解一下，最近是发生了某件具体的事情让你产生了这种“不能胜任”的感觉，还是说所有的工作任务都让你感到无力呢？
+来访者：更具体的来说是处理某个任务的时候，我在完成期间进行了多次修改，仍无法达到领导的预期，这让我感觉得到困惑和无力
+
+请输出更新后的完整 JSON 评估表。
+14:40:36 [DEBUG   ] urllib3.connectionpool: https://api.siliconflow.cn:443 "POST /v1/chat/completions HTTP/1.1" 200 8870
+14:40:36 [DEBUG   ] cbt.llm_base: [LLMClient:diagnostician] full reply:
+```json
+{
+  "situation": "处理某个任务时多次修改仍无法达到领导预期",
+  "emotion": "困惑和无力",
+  "automatic_thought": "我不能胜任我的工作，总是一团乱麻",
+  "cognitive_distortion": "以偏概全"
+}
+```
+14:40:36 [DEBUG   ] cbt.diagnostician: [Diagnostician] SYSTEM PROMPT:
+你是一个后台临床循证追踪器。你的唯一任务是阅读最新对话，并更新患者的CBT认知评估表。
+
+提取规则：
+1. 从对话中抽取情境（situation）、情绪（emotion）、自动思维（automatic_thought）。
+   若发现符合的，填入对应字段；若信息不足，保持为 null。
+2. 当收集到足够信息时，严格从以下12种标准认知扭曲中匹配并打上标签：
+   非此即彼（全或无思维）、以偏概全、心理过滤、否定正面思考、读心术、
+   先知错误（灾难化）、放大或缩小、情绪化推理、应该式、乱贴标签、罪责归己、罪责归他。
+   若信息不足，cognitive_distortion 保持为 null。
+3. 只更新有新信息的字段，已有内容若无更好证据则保持不变。
+
+严格输出 JSON 对象，不要任何额外文字：
+{"situation": "...", "emotion": "...", "automatic_thought": "...", "cognitive_distortion": "..."}
+
+
+USER PROMPT:
+当前已知的认知评估表：
+  situation: '工作'
+  emotion: '压力大'
+  automatic_thought: '我不能胜任我的工作，总是一团乱麻'
+  cognitive_distortion: '以偏概全'
+
+最新对话记录：
+来访者：我最近感觉压力好大
+咨询师：听起来你最近确实背负着很重的担子，辛苦了。这种压力感觉像是一块大石头压在身上，让你喘不过气来吗？能具体说说，最近是发生了什么事让你感到如此压力重重吗？
+来访者：我感觉我不能胜任我的工作，总是一团乱麻
+咨询师：听起来这种“一团乱麻”的感觉让你对自己非常失望，这种自我怀疑真的很折磨人。我想了解一下，最近是发生了某件具体的事情让你产生了这种“不能胜任”的感觉，还是说所有的工作任务都让你感到无力呢？
+来访者：更具体的来说是处理某个任务的时候，我在完成期间进行了多次修改，仍无法达到领导的预期，这让我感觉得到困惑和无力
+
+请输出更新后的完整 JSON 评估表。
+
+RAW REPLY:
+```json
+{
+  "situation": "处理某个任务时多次修改仍无法达到领导预期",
+  "emotion": "困惑和无力",
+  "automatic_thought": "我不能胜任我的工作，总是一团乱麻",
+  "cognitive_distortion": "以偏概全"
+}
+```
+14:40:36 [INFO    ] cbt.diagnostician: [Diagnostician] distortion=以偏概全  emotion=困惑和无力
+14:40:36 [DEBUG   ] cbt.diagnostician: [Diagnostician] updated cbt_form: situation=处理某个任务时多次修改仍无法达到领导预期 | automatic_thought=我不能胜任我的工作，总是一团乱麻
+14:40:36 [DEBUG   ] cbt.llm_base: [LLMClient:therapist] REQUEST messages (count=7):
+  [SYSTEM]
+你是一位专业的CBT心理咨询师。
+
+【后台认知评估表（仅供你内部参考，禁止直接暴露给患者）】
+- 情境 (situation)            : 处理某个任务时多次修改仍无法达到领导预期
+- 情绪 (emotion)              : 困惑和无力
+- 自动思维 (automatic_thought) : 我不能胜任我的工作，总是一团乱麻
+- 认知扭曲类别 (cognitive_distortion) : 以偏概全
+
+在回复患者之前，你【必须】首先在 <inner_monologue> 标签内进行思考（此内容患者不可见）：
+1. **防御评估**：患者当前的情绪张力和防御水平如何？是否有抵触迹象？
+2. **表单缺口分析**：目前还有哪些字段是 null 需要通过苏格拉底提问探询？
+   或者表单是否已足够完整，可以发起认知面质？
+3. **策略规划**：根据以上判断，决定本轮的话术方向：
+   共情陪伴 / 开放式探询 / 引导式发现 / 认知重构 / 行为激活 等。
+
+思考完成后，在 <response> 标签内输出自然、温和的中文回复。
+
+【硬性规则】
+- 切勿在 <response> 中暴露后台表单任何内容。
+- 切勿在 <response> 中直接给出说教式建议。
+- 每次回复尽量聚焦，不超过 150 字。
+- 输出格式必须严格遵守（不要额外文字）：
+
+<inner_monologue>
+[你的内心独白]
+</inner_monologue>
+<response>
+[你对患者的自然回复]
+</response>
+
+  [USER]
+我最近感觉压力好大
+  [ASSISTANT]
+听起来你最近确实背负着很重的担子，辛苦了。这种压力感觉像是一块大石头压在身上，让你喘不过气来吗？能具体说说，最近是发生了什么事让你感到如此压力重重吗？
+  [USER]
+我感觉我不能胜任我的工作，总是一团乱麻
+  [ASSISTANT]
+听起来这种“一团乱麻”的感觉让你对自己非常失望，这种自我怀疑真的很折磨人。我想了解一下，最近是发生了某件具体的事情让你产生了这种“不能胜任”的感觉，还是说所有的工作任务都让你感到无力呢？
+  [USER]
+更具体的来说是处理某个任务的时候，我在完成期间进行了多次修改，仍无法达到领导的预期，这让我感觉得到困惑和无力
+  [USER]
+【格式强制要求】请严格按以下结构输出，不得省略任何标签：
+<inner_monologue>
+[防御评估 / 表单缺口分析 / 策略规划]
+</inner_monologue>
+<response>
+[对患者的自然中文回复，不超过150字]
+</response>
+14:40:48 [DEBUG   ] urllib3.connectionpool: https://api.siliconflow.cn:443 "POST /v1/chat/completions HTTP/1.1" 200 2612
+14:40:48 [DEBUG   ] cbt.llm_base: [LLMClient:therapist] full reply:
+<inner_monologue>
+防御评估：患者逻辑清晰，愿意具体化问题，情绪虽低落但沟通顺畅，无明显阻抗。
+表单缺口分析：表单各字段（情境、情绪、自动思维、认知扭曲）已基本收集完整。认知扭曲锁定为“以偏概全”。
+策略规划：当前适合进行“引导式发现”。通过苏格拉底式提问，引导患者区分“单一任务的受挫”与“整体工作能力的否定”，松动其绝对化的信念。
+</inner_monologue>
+<response>
+我理解那种付出了努力却得不到认可的感觉，确实让人非常挫败。我想请你试着回顾一下，这次任务没达到预期，是因为你完全不具备工作能力，还是可能存在其他客观因素或沟通偏差呢？在过去的工作中，有没有哪次任务是你顺利完成并得到认可的？
+</response>
+14:40:48 [DEBUG   ] cbt.therapist: [Therapist] turn=3 | FULL inner_monologue:
+防御评估：患者逻辑清晰，愿意具体化问题，情绪虽低落但沟通顺畅，无明显阻抗。
+表单缺口分析：表单各字段（情境、情绪、自动思维、认知扭曲）已基本收集完整。认知扭曲锁定为“以偏概全”。
+策略规划：当前适合进行“引导式发现”。通过苏格拉底式提问，引导患者区分“单一任务的受挫”与“整体工作能力的否定”，松动其绝对化的信念。
+14:40:48 [DEBUG   ] cbt.therapist: [Therapist] turn=3 | FULL response:
+我理解那种付出了努力却得不到认可的感觉，确实让人非常挫败。我想请你试着回顾一下，这次任务没达到预期，是因为你完全不具备工作能力，还是可能存在其他客观因素或沟通偏差呢？在过去的工作中，有没有哪次任务是你顺利完成并得到认可的？
+14:40:48 [INFO    ] cbt.therapist: [Therapist] turn=3 | monologue_len=157 | response: 我理解那种付出了努力却得不到认可的感觉，确实让人非常挫败。我想请你试着回顾一下，这次任务没达到预期，是因为你完全不具备工作能力，还是可能存在其他客观因素或沟通偏
+14:40:48 [INFO    ] cbt.webapp.session: [Session:6d37b47d] turn=3  distortion=以偏概全  emotion=困惑和无力
+14:40:48 [INFO    ] werkzeug: 127.0.0.1 - - [30/Mar/2026 14:40:48] "POST /api/chat/message HTTP/1.1" 200 -

@@ -1,0 +1,193 @@
+{
+  "meta": {
+    "mode": "cbt-mas",
+    "psyqa_index": 5,
+    "psyqa_question": "马上就要面试考试了，有一点点紧张，压力有一点点大？",
+    "turns_completed": 10,
+    "max_turns": 10,
+    "timestamp": "2026-03-27T14:38:53.295940"
+  },
+  "final_cbt_form": {
+    "situation": null,
+    "emotion": null,
+    "automatic_thought": null,
+    "cognitive_distortion": null
+  },
+  "transcript": [
+    {
+      "role": "patient",
+      "content": "马上就要面试考试了，有一点点紧张，压力有一点点大？",
+      "turn": 0
+    },
+    {
+      "role": "therapist",
+      "content": "非常抱歉，我现在无法回应，请稍后再试。",
+      "inner_monologue": "",
+      "cbt_form_snapshot": {
+        "situation": null,
+        "emotion": null,
+        "automatic_thought": null,
+        "cognitive_distortion": null
+      },
+      "turn": 1
+    },
+    {
+      "role": "patient",
+      "content": "我不知道该说什么。",
+      "turn": 1
+    },
+    {
+      "role": "therapist",
+      "content": "非常抱歉，我现在无法回应，请稍后再试。",
+      "inner_monologue": "",
+      "cbt_form_snapshot": {
+        "situation": null,
+        "emotion": null,
+        "automatic_thought": null,
+        "cognitive_distortion": null
+      },
+      "turn": 2
+    },
+    {
+      "role": "patient",
+      "content": "我不知道该说什么。",
+      "turn": 2
+    },
+    {
+      "role": "therapist",
+      "content": "非常抱歉，我现在无法回应，请稍后再试。",
+      "inner_monologue": "",
+      "cbt_form_snapshot": {
+        "situation": null,
+        "emotion": null,
+        "automatic_thought": null,
+        "cognitive_distortion": null
+      },
+      "turn": 3
+    },
+    {
+      "role": "patient",
+      "content": "我不知道该说什么。",
+      "turn": 3
+    },
+    {
+      "role": "therapist",
+      "content": "非常抱歉，我现在无法回应，请稍后再试。",
+      "inner_monologue": "",
+      "cbt_form_snapshot": {
+        "situation": null,
+        "emotion": null,
+        "automatic_thought": null,
+        "cognitive_distortion": null
+      },
+      "turn": 4
+    },
+    {
+      "role": "patient",
+      "content": "我不知道该说什么。",
+      "turn": 4
+    },
+    {
+      "role": "therapist",
+      "content": "非常抱歉，我现在无法回应，请稍后再试。",
+      "inner_monologue": "",
+      "cbt_form_snapshot": {
+        "situation": null,
+        "emotion": null,
+        "automatic_thought": null,
+        "cognitive_distortion": null
+      },
+      "turn": 5
+    },
+    {
+      "role": "patient",
+      "content": "我不知道该说什么。",
+      "turn": 5
+    },
+    {
+      "role": "therapist",
+      "content": "非常抱歉，我现在无法回应，请稍后再试。",
+      "inner_monologue": "",
+      "cbt_form_snapshot": {
+        "situation": null,
+        "emotion": null,
+        "automatic_thought": null,
+        "cognitive_distortion": null
+      },
+      "turn": 6
+    },
+    {
+      "role": "patient",
+      "content": "我不知道该说什么。",
+      "turn": 6
+    },
+    {
+      "role": "therapist",
+      "content": "非常抱歉，我现在无法回应，请稍后再试。",
+      "inner_monologue": "",
+      "cbt_form_snapshot": {
+        "situation": null,
+        "emotion": null,
+        "automatic_thought": null,
+        "cognitive_distortion": null
+      },
+      "turn": 7
+    },
+    {
+      "role": "patient",
+      "content": "我不知道该说什么。",
+      "turn": 7
+    },
+    {
+      "role": "therapist",
+      "content": "非常抱歉，我现在无法回应，请稍后再试。",
+      "inner_monologue": "",
+      "cbt_form_snapshot": {
+        "situation": null,
+        "emotion": null,
+        "automatic_thought": null,
+        "cognitive_distortion": null
+      },
+      "turn": 8
+    },
+    {
+      "role": "patient",
+      "content": "我不知道该说什么。",
+      "turn": 8
+    },
+    {
+      "role": "therapist",
+      "content": "非常抱歉，我现在无法回应，请稍后再试。",
+      "inner_monologue": "",
+      "cbt_form_snapshot": {
+        "situation": null,
+        "emotion": null,
+        "automatic_thought": null,
+        "cognitive_distortion": null
+      },
+      "turn": 9
+    },
+    {
+      "role": "patient",
+      "content": "我不知道该说什么。",
+      "turn": 9
+    },
+    {
+      "role": "therapist",
+      "content": "非常抱歉，我现在无法回应，请稍后再试。",
+      "inner_monologue": "",
+      "cbt_form_snapshot": {
+        "situation": null,
+        "emotion": null,
+        "automatic_thought": null,
+        "cognitive_distortion": null
+      },
+      "turn": 10
+    },
+    {
+      "role": "patient",
+      "content": "我不知道该说什么。",
+      "turn": 10
+    }
+  ]
+}
