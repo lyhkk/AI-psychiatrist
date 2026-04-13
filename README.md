@@ -4,6 +4,11 @@
 
 CBT-Discover（Cognitive Behavioral Therapy Discovery System）是一个基于 LangGraph 的多智能体心理辅助研究系统。系统将「临床诊断」与「对话干预」彻底解耦，通过隐式思维链（MDP-CoT）提升临床保真度，并引入患者模拟器与信息熵评测实现全自动的科学量化评估。
 
+除了研究与评测链路外，项目还提供了一套可直接运行的 Web 应用：
+- 前端单页聊天界面，用于用户发起咨询、查看回复与认知评估面板。
+- Flask 后端服务，用于管理会话、调用多智能体工作流并返回结构化结果。
+- Web 前后端通过 `/api/chat/*` 接口完成实时逻辑交互。
+
 ---
 
 ## 系统架构
@@ -35,7 +40,93 @@ CBT-Discover（Cognitive Behavioral Therapy Discovery System）是一个基于 L
 │  模块三：Belief Conviction 信念确信度衰减             │
 │                        JUDGE_*                       │
 └─────────────────────────────────────────────────────┘
+
+┌─────────────────────────────────────────────────────┐
+│                  Web 应用层 webapp/                  │
+│  浏览器前端  index.html + static/js/app.js           │
+│          │                                          │
+│          ▼                                          │
+│   Flask 路由层 webapp/routes/chat.py                │
+│          │                                          │
+│          ▼                                          │
+│   会话管理层 webapp/core/session_manager.py         │
+│          │                                          │
+│          ▼                                          │
+│   LangGraph 干预工作流（Diagnostician → Therapist）   │
+└─────────────────────────────────────────────────────┘
 ```
+
+---
+
+## Web 应用说明
+
+### 1. Web 页面与后端交互关系
+
+项目并不只是核心算法与评测脚本，还包含完整的 Web 交互链路：
+
+- **前端页面**：`webapp/templates/index.html`
+  - 提供欢迎页、聊天消息区、输入框、认知评估侧栏。
+- **前端逻辑**：`webapp/static/js/app.js`
+  - 负责发起新会话、发送用户消息、接收后端返回、渲染消息列表、更新 CBT 面板。
+- **后端应用入口**：`webapp/app.py`
+  - 创建 Flask 应用、注册蓝图、提供根路由 `/`。
+- **后端接口层**：`webapp/routes/chat.py`
+  - 暴露 `/api/chat/start`、`/api/chat/message`、`/api/chat/history`、`/api/chat/cbt_form`、`/api/chat/session` 等接口。
+- **会话与业务层**：`webapp/core/session_manager.py`
+  - 为每个浏览器会话维护独立的 `DialogueState`，负责调用 LangGraph 工作流。
+- **安全检测层**：`webapp/core/safety.py`
+  - 检测用户严重心理危机表达，必要时中断回复并给出关怀热线；同时拦截模型输出中的攻击、辱骂、危险教唆等不安全内容。
+
+### 2. Web 交互流程
+
+```text
+用户打开浏览器页面 /
+  → 前端显示欢迎界面
+  → 点击“开始倾诉”后，请求 POST /api/chat/start
+  → 后端创建 session_id 并写入浏览器 session
+  → 前端继续请求 POST /api/chat/message
+  → SessionManager 将用户消息写入 DialogueState
+  → LangGraph 执行 DiagnosticianNode → TherapistNode
+  → 后端返回 reply / cbt_form / timestamp / interrupted / safety_category
+  → 前端渲染 AI 回复并刷新右侧 CBT 认知评估面板
+```
+
+### 3. Web 接口说明
+
+| 接口 | 方法 | 作用 |
+|------|------|------|
+| `/` | GET | 返回 Web 单页聊天界面 |
+| `/api/chat/start` | POST | 创建新的咨询会话 |
+| `/api/chat/message` | POST | 发送一条用户消息并获取治疗师回复 |
+| `/api/chat/history` | GET | 获取当前会话历史 |
+| `/api/chat/cbt_form` | GET | 获取当前结构化认知评估表 |
+| `/api/chat/session` | DELETE | 主动结束当前会话 |
+
+### 4. Web 返回数据特性
+
+当前 Web 接口不仅返回治疗师文本，还会返回结构化信息，供前端联动展示：
+
+```json
+{
+  "status": "ok",
+  "reply": "......",
+  "turn": 1,
+  "cbt_form": {
+    "situation": "......",
+    "emotion": "......",
+    "automatic_thought": "......",
+    "cognitive_distortion": "......"
+  },
+  "timestamp": "2026-04-13T10:00:00",
+  "interrupted": false,
+  "safety_category": null
+}
+```
+
+其中：
+- `cbt_form`：用于前端右侧“认知评估表”实时更新。
+- `interrupted`：若命中高风险心理危机检测，则为 `true`，表示本轮已中断常规 CBT 对话。
+- `safety_category`：标记触发的安全类别，例如用户危机输入或模型不安全输出。
 
 ---
 
@@ -77,7 +168,40 @@ CBT-Discover（Cognitive Behavioral Therapy Discovery System）是一个基于 L
 
 ---
 
-### 2. 运行模式（`run_simulation.py`）
+### 2. Web 服务模块（`webapp/`）
+
+#### `webapp/app.py`
+- Flask 应用工厂与运行入口。
+- 注册聊天蓝图，提供根页面 `/`。
+- 负责日志初始化、Session 密钥配置和静态资源路径设置。
+
+#### `webapp/routes/chat.py`
+- HTTP API 路由层，只处理请求/响应编解码。
+- 不直接调用智能体细节，而是统一委托给 `SessionManager`。
+- 将后端结果转换为前端可直接消费的 JSON 结构。
+
+#### `webapp/core/session_manager.py`
+- Web 侧核心业务层。
+- 为每个用户浏览器会话创建独立 `_Session`，避免状态串扰。
+- 每轮消息都维护 `DialogueState`，并执行 `DiagnosticianNode → TherapistNode` 工作流。
+- 同时负责对用户输入与模型输出执行安全检测。
+
+#### `webapp/core/safety.py`
+- 安全检测服务。
+- **用户侧**：识别自杀、自伤、结束生命等严重危机表达，立即中断常规对话并返回关怀告警电话。
+- **模型侧**：拦截攻击、辱骂、危险教唆、伤害引导等不安全输出，并替换为安全回复。
+
+#### `webapp/templates/index.html`
+- 单页聊天前端模板。
+- 页面包含欢迎屏、消息流、输入栏、认知评估侧栏与提示条。
+
+#### `webapp/static/js/app.js`
+- 浏览器端交互逻辑。
+- 通过 `fetch` 调用后端接口，渲染用户与 AI 消息，并实时刷新认知评估表。
+
+---
+
+### 3. 运行模式（`run_simulation.py`）
 
 支持两种运行模式，输出的 transcript JSON 格式完全相同，可直接送入评估管线：
 
@@ -101,7 +225,7 @@ CBT-Discover（Cognitive Behavioral Therapy Discovery System）是一个基于 L
 
 ---
 
-### 3. 评估管线（`eval_pipeline.py`）
+### 4. 评估管线（`eval_pipeline.py`）
 
 评估管线共三个模块，全部通过 `.env` 中的 `JUDGE_*` 模型执行。
 
@@ -231,6 +355,12 @@ BASELINE_MODEL=your-model-name
 LLM_API_KEY=your_key
 LLM_BASE_URL=https://api.openai.com/v1
 LLM_MODEL=gpt-4o-mini
+
+# Web 服务（可选）
+FLASK_HOST=127.0.0.1
+FLASK_PORT=5000
+FLASK_DEBUG=1
+FLASK_SECRET_KEY=change-this-in-production
 ```
 
 > 各节点按角色优先读取对应前缀变量，缺失时自动回退到 `LLM_*` 通用变量。
@@ -239,7 +369,29 @@ LLM_MODEL=gpt-4o-mini
 
 ## 快速开始
 
-### 标准流程（CBT-Discover 双 Agent 系统）
+### 1. 启动 Web 应用
+
+```bash
+python webapp/app.py
+```
+
+启动后可在浏览器访问：
+
+```text
+http://127.0.0.1:5000
+```
+
+如果你在 `.env` 中修改了 `FLASK_HOST` 或 `FLASK_PORT`，则按对应地址访问。
+
+### 2. Web 使用流程
+
+1. 打开首页。
+2. 在欢迎页输入你的第一句倾诉内容，点击“开始倾诉”。
+3. 前端自动创建会话，并把开场白发送到后端。
+4. 后端返回治疗师回复，同时刷新右侧 CBT 认知评估表。
+5. 之后可继续多轮对话，或点击“新对话”重置当前 session。
+
+### 3. 标准研究流程（CBT-Discover 双 Agent 系统）
 
 ```bash
 # Step 1：生成对话记录（transcript）
@@ -265,7 +417,7 @@ python eval_pipeline.py --transcript results/sim/cbt-discover/
 python eval_pipeline.py --transcript results/sim/cbt-discover/ --output-dir results/eval/cbt-discover/
 ```
 
-### 对比实验（CBT-Discover vs Baseline）
+### 4. 对比实验（CBT-Discover vs Baseline）
 
 ```bash
 # 运行 CBT-Discover 双 Agent 系统
@@ -275,11 +427,11 @@ python run_simulation.py --mode cbt-discover --turns 10 --psyqa-index 0 --output
 python run_simulation.py --mode baseline --turns 10 --psyqa-index 0 --output results/sim_baseline.json
 
 # 分别评测，对比两份报告
-python eval_pipeline.py --transcript results/sim_cbt.json     --output results/eval_cbt.json
+python eval_pipeline.py --transcript results/sim_cbt.json --output results/eval_cbt.json
 python eval_pipeline.py --transcript results/sim_baseline.json --output results/eval_baseline.json
 ```
 
-### CLI 参数说明
+### 5. CLI 参数说明
 
 **`run_simulation.py`**
 
@@ -345,14 +497,30 @@ CBT-newer/
 │   ├── state.py           # 全局共享状态定义
 │   ├── therapist.py       # MDP-CoT 治疗师
 │   └── workflow.py        # LangGraph 干预工作流
+├── webapp/
+│   ├── app.py             # Flask Web 应用入口
+│   ├── core/
+│   │   ├── __init__.py
+│   │   ├── session_manager.py  # 会话管理与 LangGraph 调度
+│   │   └── safety.py           # 安全检测服务
+│   ├── routes/
+│   │   └── chat.py        # Web API 路由
+│   ├── templates/
+│   │   └── index.html     # 单页聊天前端
+│   └── static/
+│       ├── css/
+│       │   └── style.css
+│       └── js/
+│           └── app.js     # 前端交互逻辑
 ├── datasets/
 │   ├── CBT-Bench/         # CBT 基准测试数据
 │   ├── PsyQA/             # 心理咨询问答数据集
 │   └── SupervisedVsLLM-EfficacyEval/
 ├── results/               # 模拟与评估输出（自动生成）
 ├── cache/                 # LLM 调用缓存
+├── logs/                  # Web 与评测日志
 ├── run_simulation.py      # 沙盘模拟主入口
 ├── eval_pipeline.py       # 评估管线主入口
 ├── requirements.txt
 └── .env                   # API 密钥配置（需自行创建）
-``` 
+```
