@@ -29,6 +29,14 @@ const el = {
   cardEmotion   : $('card-emotion'),
   cardThought   : $('card-thought'),
   cardDistortion: $('card-distortion'),
+  btnHistory    : $('btn-history'),
+  drawer        : $('history-drawer'),
+  drawerBackdrop: $('drawer-backdrop'),
+  drawerList    : $('drawer-list'),
+  btnCloseHistory: $('btn-close-history'),
+  btnExportJson : $('btn-export-json'),
+  btnExportMd   : $('btn-export-md'),
+  btnUndo       : $('btn-undo'),
 };
 
 /* ── 工具函数 ───────────────────────────────────────────────── */
@@ -234,6 +242,132 @@ async function newSession() {
   showToast('已开启新对话');
 }
 
+/* ── 会话历史抽屉 ────────────────────────────────────────────── */
+function openHistory() {
+  el.drawer.classList.add('show');
+  el.drawerBackdrop.classList.add('show');
+  el.drawer.setAttribute('aria-hidden', 'false');
+  loadHistoryList();
+}
+function closeHistory() {
+  el.drawer.classList.remove('show');
+  el.drawerBackdrop.classList.remove('show');
+  el.drawer.setAttribute('aria-hidden', 'true');
+}
+async function loadHistoryList() {
+  el.drawerList.innerHTML = '<p class="hist-empty">加载中……</p>';
+  try {
+    const res = await fetch('/api/chat/sessions');
+    const data = await res.json();
+    if (data.status !== 'ok') throw new Error(data.message || '加载失败');
+    renderHistoryList(data.sessions || []);
+  } catch (e) {
+    el.drawerList.innerHTML = '<p class="hist-empty">加载失败：' + escHtml(e.message) + '</p>';
+  }
+}
+function renderHistoryList(sessions) {
+  if (!sessions.length) {
+    el.drawerList.innerHTML = '<p class="hist-empty">还没有历史会话</p>';
+    return;
+  }
+  el.drawerList.innerHTML = '';
+  sessions.forEach(s => {
+    const row = document.createElement('div');
+    row.className = 'hist-row';
+    const badge = s.cognitive_distortion
+      ? `<span class="hist-badge">${escHtml(s.cognitive_distortion)}</span>` : '';
+    const current = s.session_id === State.sessionId
+      ? '<span class="hist-badge">当前</span>' : '';
+    row.innerHTML = `
+      <div class="hist-title">${escHtml(s.title || '(空会话)')}</div>
+      <div class="hist-meta">
+        <span>${formatDate(s.last_active)}</span>
+        <span>· ${s.turn_count} 轮</span>
+        ${badge}${current}
+      </div>`;
+    const actions = document.createElement('div');
+    actions.className = 'hist-actions';
+    actions.appendChild(mkBtn('继续', () => resumeSession(s.session_id)));
+    actions.appendChild(mkBtn('JSON', () => exportSession(s.session_id, 'json')));
+    actions.appendChild(mkBtn('MD',   () => exportSession(s.session_id, 'md')));
+    row.appendChild(actions);
+    el.drawerList.appendChild(row);
+  });
+}
+function mkBtn(label, fn) {
+  const b = document.createElement('button');
+  b.className = 'btn btn-ghost btn-sm';
+  b.textContent = label;
+  b.addEventListener('click', fn);
+  return b;
+}
+function formatDate(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '—';
+  return d.toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+}
+
+/* ── 渲染一段历史消息（复用现有气泡组件，保证视觉一致） ──────── */
+function renderHistoryMessages(history) {
+  el.messages.innerHTML = '';
+  (history || []).forEach(m => {
+    if (m.role === 'user') appendUserMsg(m.content);
+    else if (m.role === 'assistant') appendAiMsg(m.content);
+  });
+  scrollToBottom();
+}
+
+/* ── 继续某段历史会话 ────────────────────────────────────────── */
+async function resumeSession(sid) {
+  if (State.isWaiting) return;
+  try {
+    const res = await fetch('/api/chat/resume', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ session_id: sid }),
+    });
+    const data = await res.json();
+    if (data.status !== 'ok') throw new Error(data.message || '恢复失败');
+    State.sessionId = data.session_id;
+    closeHistory();
+    showChatUI();
+    renderHistoryMessages(data.history);
+    updateCbtPanel(data.cbt_form);
+    showToast('已恢复会话 · 接着上次继续');
+  } catch (e) {
+    showToast('恢复失败：' + e.message);
+  }
+}
+
+/* ── 下载会话（不离开页面） ──────────────────────────────────── */
+function exportSession(sid, fmt) {
+  if (!sid) { showToast('请先开始或选择一个会话'); return; }
+  const a = document.createElement('a');
+  a.href = `/api/chat/sessions/${encodeURIComponent(sid)}/export?format=${fmt}`;
+  a.download = '';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  showToast(`正在下载 ${fmt.toUpperCase()}`);
+}
+
+/* ── 撤销上一轮 ──────────────────────────────────────────────── */
+async function undoLastTurn() {
+  if (State.isWaiting) return;
+  if (!State.sessionId) { showToast('请先开始或选择一个会话'); return; }
+  try {
+    const res = await fetch('/api/chat/undo', { method: 'POST' });
+    const data = await res.json();
+    if (data.status !== 'ok') { showToast(data.message || '撤销失败'); return; }
+    renderHistoryMessages(data.history);
+    updateCbtPanel(data.cbt_form);
+    showToast('已撤销上一轮');
+  } catch (e) {
+    showToast('撤销失败：' + e.message);
+  }
+}
+
 /* ── 面板开关 ────────────────────────────────────────────────── */
 function togglePanel() {
   State.panelVisible = !State.panelVisible;
@@ -278,6 +412,15 @@ el.userInput.addEventListener('input', () => autoResize(el.userInput));
 
 el.btnNewSession.addEventListener('click', newSession);
 el.btnTogglePanel.addEventListener('click', togglePanel);
+el.btnHistory.addEventListener('click', openHistory);
+el.btnCloseHistory.addEventListener('click', closeHistory);
+el.drawerBackdrop.addEventListener('click', closeHistory);
+el.btnExportJson.addEventListener('click', () => exportSession(State.sessionId, 'json'));
+el.btnExportMd.addEventListener('click', () => exportSession(State.sessionId, 'md'));
+el.btnUndo.addEventListener('click', undoLastTurn);
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && el.drawer.classList.contains('show')) closeHistory();
+});
 
 /* ── 初始化：隐藏对话区，显示欢迎屏 ─────────────────────────── */
 (function init() {

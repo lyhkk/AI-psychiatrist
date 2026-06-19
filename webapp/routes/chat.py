@@ -11,15 +11,21 @@ Flask 蓝图：对话 API（/api/chat/*）。
 
 端点
 ----
-POST /api/chat/start          开始新的 CBT 会话
-POST /api/chat/message        发送消息，获取治疗师回复（SSE 流式）
-GET  /api/chat/history        获取当前会话的完整对话历史
-GET  /api/chat/cbt_form       获取当前认知评估表
-DELETE /api/chat/session      结束并销毁当前会话
+POST   /api/chat/start                     开始新的 CBT 会话
+POST   /api/chat/message                   发送消息，获取治疗师回复
+GET    /api/chat/history                   获取当前会话的完整对话历史
+GET    /api/chat/cbt_form                  获取当前认知评估表
+DELETE /api/chat/session                   结束并销毁当前会话
+GET    /api/chat/sessions                  会话历史列表（全部会话摘要）
+GET    /api/chat/sessions/<sid>            单条完整会话记录
+GET    /api/chat/sessions/<sid>/export     导出会话（format=json|md）
+POST   /api/chat/resume                    切换到并继续某段历史会话
+POST   /api/chat/undo                      撤销当前会话最近一轮
 """
 
 from __future__ import annotations
 
+import json
 import logging
 from flask import (
     Blueprint,
@@ -30,6 +36,7 @@ from flask import (
 )
 
 from webapp.core import get_session_manager
+from webapp.core.export import to_markdown
 
 logger = logging.getLogger("cbt.webapp.routes")
 
@@ -190,3 +197,144 @@ def close_session():
     if sid:
         get_session_manager().close_session(sid)
     return _ok({"message": "会话已结束"})
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# GET /api/chat/sessions  —— 会话历史列表
+# ─────────────────────────────────────────────────────────────────────────────
+
+@chat_bp.get("/sessions")
+def list_sessions():
+    """
+    返回服务器上全部会话的摘要列表（按最后活跃倒序）。
+
+    Response
+    --------
+    { status, sessions: [{session_id, created_at, last_active, turn_count,
+                          title, emotion, cognitive_distortion}, ...] }
+    """
+    sessions = get_session_manager().list_sessions()
+    return _ok({"sessions": sessions})
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# GET /api/chat/sessions/<sid>  —— 单条完整记录
+# ─────────────────────────────────────────────────────────────────────────────
+
+@chat_bp.get("/sessions/<sid>")
+def get_session_record(sid: str):
+    """返回指定会话的完整记录（含对话历史与诊断演变）。"""
+    try:
+        record = get_session_manager().get_record(sid)
+        return _ok({"session": record})
+    except KeyError:
+        return _err("会话不存在", 404)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# GET /api/chat/sessions/<sid>/export?format=json|md  —— 下载
+# ─────────────────────────────────────────────────────────────────────────────
+
+@chat_bp.get("/sessions/<sid>/export")
+def export_session(sid: str):
+    """
+    导出指定会话为可下载文件。
+
+    Query
+    -----
+    format : "json"（默认）| "md"
+    """
+    fmt = (request.args.get("format") or "json").lower()
+    try:
+        record = get_session_manager().get_record(sid)
+    except KeyError:
+        return _err("会话不存在", 404)
+
+    short = sid[:8]
+    if fmt == "json":
+        body = json.dumps(record, ensure_ascii=False, indent=2)
+        return Response(
+            body,
+            mimetype="application/json; charset=utf-8",
+            headers={
+                "Content-Disposition": f'attachment; filename="cbt_session_{short}.json"'
+            },
+        )
+    if fmt in ("md", "markdown"):
+        body = to_markdown(record)
+        return Response(
+            body,
+            mimetype="text/markdown; charset=utf-8",
+            headers={
+                "Content-Disposition": f'attachment; filename="cbt_session_{short}.md"'
+            },
+        )
+    return _err("不支持的导出格式，仅支持 json 或 md")
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# POST /api/chat/resume  —— 继续某段历史会话
+# ─────────────────────────────────────────────────────────────────────────────
+
+@chat_bp.post("/resume")
+def resume_session():
+    """
+    将当前浏览器会话切换到指定历史会话，之后 /message 在其上追加续聊。
+
+    Body (JSON)
+    -----------
+    session_id : str
+
+    Response
+    --------
+    { status, session_id, turn, history, cbt_form }
+    """
+    body = request.get_json(silent=True) or {}
+    sid = (body.get("session_id") or "").strip()
+    if not sid:
+        return _err("缺少 session_id")
+
+    mgr = get_session_manager()
+    try:
+        record = mgr.get_record(sid)
+    except KeyError:
+        return _err("会话不存在", 404)
+
+    session["session_id"] = sid
+    logger.info("[Route] /resume  -> session=%s  turn=%s", sid[:8], record.get("turn_count"))
+    return _ok({
+        "session_id": sid,
+        "turn":       record.get("turn_count", 0),
+        "history":    record.get("chat_history", []),
+        "cbt_form":   record.get("cbt_form", {}),
+    })
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# POST /api/chat/undo  —— 撤销当前会话最近一轮
+# ─────────────────────────────────────────────────────────────────────────────
+
+@chat_bp.post("/undo")
+def undo_turn():
+    """
+    撤销当前会话最近一轮对话。
+
+    Response
+    --------
+    { status, turn, history, cbt_form }
+    """
+    sid = session.get("session_id")
+    if not sid:
+        return _err("会话不存在，请先开始或选择一个会话", 401)
+    mgr = get_session_manager()
+    try:
+        result = mgr.undo_last_turn(sid)
+    except KeyError:
+        return _err("会话已失效", 404)
+    except ValueError as e:
+        return _err(str(e))
+    return _ok({
+        "turn":     result["turn"],
+        "history":  result["history"],
+        "cbt_form": result["cbt_form"],
+    })
