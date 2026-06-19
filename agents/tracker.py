@@ -58,3 +58,42 @@ class TrackerNode:
         # 应对回顾：恒定保底，确保复诊至少一问
         questions.append("这段时间，你有没有尝试一些新的方式去应对它？效果怎么样？")
         return questions
+
+    # ── 受限润色 ────────────────────────────────────────────────────────────
+    def polish_question(self, template: str, baseline_form: dict) -> str:
+        """对单条模板做受限润色；任一校验失败则回退原模板。"""
+        if self.llm is None:
+            return template
+        try:
+            polished = self.llm.simple_chat(
+                system=_POLISH_SYSTEM, user=template, temperature=0.3
+            ).strip()
+        except Exception as exc:
+            logger.warning("[Tracker] polish LLM failed: %s", exc)
+            return template
+        if not self._polish_valid(template, polished, baseline_form):
+            logger.info("[Tracker] polish rejected, using template")
+            return template
+        return polished
+
+    @staticmethod
+    def _polish_valid(template: str, polished: str, baseline_form: dict) -> bool:
+        if not polished or len(polished) > len(template) * 1.8:
+            return False
+        # 必须保留模板引用的基线原文（情境/自动思维）
+        for key in ("situation", "automatic_thought"):
+            val = (baseline_form or {}).get(key)
+            if val and val in template and val not in polished:
+                return False
+        # 模板含评分要求则润色须保留 0 与 100
+        if "0" in template and "100" in template:
+            if "0" not in polished or "100" not in polished:
+                return False
+        return True
+
+    def build_checkin_questions(self, baseline_form: dict, polish: bool = True) -> list[str]:
+        """生成复诊问句：模板兜底 +（可选）逐条受限润色。"""
+        templates = self.build_questions(baseline_form)
+        if not polish or self.llm is None:
+            return templates
+        return [self.polish_question(t, baseline_form) for t in templates]
