@@ -201,6 +201,47 @@ class TrackerService:
             logger.warning("[Tracker] narrate failed: %s", exc)
             return "", ""
 
+    # ── 查询 ──────────────────────────────────────────────────────────────
+    def list_baselines(self, session_summaries_or_records: list[dict]) -> list[dict]:
+        """从会话记录中筛出可作基线者（轮次≥2 或有 automatic_thought）。"""
+        out = []
+        for r in session_summaries_or_records:
+            form = r.get("cbt_form", {}) or {}
+            if int(r.get("turn_count", 0) or 0) >= 2 or form.get("automatic_thought"):
+                out.append({
+                    "session_id": r.get("session_id", ""),
+                    "title": (r.get("chat_history") or [{}])[0].get("content", "")[:40]
+                             if r.get("chat_history") else r.get("title", "(空会话)"),
+                    "last_active": r.get("last_active", ""),
+                    "turn_count": int(r.get("turn_count", 0) or 0),
+                    "emotion": form.get("emotion"),
+                    "cognitive_distortion": form.get("cognitive_distortion"),
+                })
+        return sorted(out, key=lambda s: s.get("last_active") or "", reverse=True)
+
+    def get_report(self, checkin_id: str) -> dict:
+        rec = self._load(checkin_id)
+        if rec is None:
+            raise KeyError(checkin_id)
+        if rec.get("status") != "completed" or not rec.get("report"):
+            raise ValueError("复诊尚未完成")
+        return rec["report"]
+
+    def list_checkins(self, baseline_id: str | None = None) -> list[dict]:
+        rows = []
+        for r in self._store.list_records():
+            if baseline_id and r.get("baseline_id") != baseline_id:
+                continue
+            rows.append({
+                "checkin_id": r.get("checkin_id", r.get("session_id", "")),
+                "baseline_id": r.get("baseline_id", ""),
+                "status": r.get("status", ""),
+                "created_at": r.get("created_at", ""),
+                "current_conviction": (r.get("report") or {}).get("current_conviction"),
+                "status_label": (r.get("report") or {}).get("status"),
+            })
+        return sorted(rows, key=lambda s: s.get("created_at") or "", reverse=True)
+
     # ── 内部 ──────────────────────────────────────────────────────────────
     def _save(self, record: dict) -> None:
         # SessionStore 以 record["session_id"] 命名文件；令其等于 checkin_id 复用存储
@@ -209,3 +250,28 @@ class TrackerService:
 
     def _load(self, checkin_id: str) -> dict | None:
         return self._store.load(checkin_id)
+
+
+# ── 应用级单例 ──────────────────────────────────────────────────────────────
+_tracker_instance: "TrackerService | None" = None
+
+
+def get_tracker_service() -> "TrackerService":
+    global _tracker_instance
+    if _tracker_instance is None:
+        from agents.llm_base import LLMClient
+        from agents import DiagnosticianNode
+        from agents.tracker import TrackerNode
+        from .session_manager import get_session_manager
+        directory = os.getenv("TRACKER_STORE_DIR") or str(_PROJECT_ROOT / "results" / "trackers")
+        polish = os.getenv("ENABLE_TRACKER_POLISH", "true").strip().lower() in ("1", "true", "yes", "on")
+        _tracker_instance = TrackerService(
+            baseline_loader=get_session_manager().get_record,
+            tracker_store=SessionStore(directory, enabled=True),
+            question_builder=TrackerNode(LLMClient.from_role("therapist") if polish else None),
+            judge_llm=LLMClient.from_role("judge"),
+            diagnostician=DiagnosticianNode(),
+            polish=polish,
+        )
+        logger.info("[Tracker] service initialized  dir=%s  polish=%s", directory, polish)
+    return _tracker_instance

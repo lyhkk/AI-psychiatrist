@@ -89,8 +89,9 @@ def create_app(debug: bool = False) -> Flask:
     app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 
     # ── 注册蓝图 ──────────────────────────────────────────────────────────────
-    from webapp.routes import chat_bp
+    from webapp.routes import chat_bp, tracker_bp
     app.register_blueprint(chat_bp)
+    app.register_blueprint(tracker_bp)
 
     # ── 根路由：返回单页前端 ──────────────────────────────────────────────────
     @app.get("/")
