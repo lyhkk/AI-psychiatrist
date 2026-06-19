@@ -42,6 +42,24 @@ def _format_transcript(chat_history: list[dict]) -> str:
     return "\n".join(lines)
 
 
+# ── 模块级：诊断表 diff ─────────────────────────────────────────────────────
+def _diff_forms(before: dict, after: dict) -> list[dict]:
+    out = []
+    for label, key in _DIMS:
+        b = (before or {}).get(key)
+        a = (after or {}).get(key)
+        if b and a:
+            change = "same" if b == a else "changed"
+        elif b and not a:
+            change = "not_reassessed"
+        elif (not b) and a:
+            change = "new"
+        else:
+            change = "same"
+        out.append({"dimension": label, "key": key, "before": b, "after": a, "change": change})
+    return out
+
+
 class TrackerService:
     def __init__(self, baseline_loader: Callable[[str], dict],
                  tracker_store: SessionStore, question_builder,
@@ -81,6 +99,107 @@ class TrackerService:
                     checkin_id[:8], baseline_id[:8], len(questions))
         return {"checkin_id": checkin_id, "baseline_form": baseline_form,
                 "question": questions[0], "q_index": 0, "total": len(questions)}
+
+    # ── 推进问答 ──────────────────────────────────────────────────────────
+    def checkin_message(self, checkin_id: str, user_message: str) -> dict[str, Any]:
+        with self._lock:
+            rec = self._load(checkin_id)
+            if rec is None:
+                raise KeyError(checkin_id)
+            if rec.get("status") == "completed":
+                return {"done": True, "report": rec.get("report")}
+
+            history = list(rec.get("chat_history", []))
+            history.append({"role": "user", "content": user_message})
+            rec["chat_history"] = history
+            rec["q_index"] = int(rec.get("q_index", 0)) + 1
+            rec["last_active"] = datetime.now().isoformat()
+
+            questions = rec.get("questions", [])
+            if rec["q_index"] < len(questions):
+                next_q = questions[rec["q_index"]]
+                history.append({"role": "assistant", "content": next_q})
+                self._save(rec)
+                return {"done": False, "question": next_q,
+                        "q_index": rec["q_index"], "total": len(questions)}
+
+            report = self.compute_report(rec)
+            rec["report"] = report
+            rec["status"] = "completed"
+            self._save(rec)
+            return {"done": True, "report": report}
+
+    # ── 报告计算 ──────────────────────────────────────────────────────────
+    def compute_report(self, checkin: dict) -> dict[str, Any]:
+        from eval_pipeline import get_belief_conviction  # 复用既有确信度量表
+
+        baseline = self._baseline_loader(checkin["baseline_id"])
+        baseline_form = checkin.get("baseline_form", {})
+
+        base_text = _format_transcript(baseline.get("chat_history", []))
+        cur_text = _format_transcript(checkin.get("chat_history", []))
+        base_conv, base_ev = get_belief_conviction(self._judge, base_text)
+        cur_conv, cur_ev = get_belief_conviction(self._judge, cur_text)
+        delta = base_conv - cur_conv
+        status = "改善" if delta >= 15 else ("恶化" if delta <= -15 else "持平")
+
+        state = make_initial_state()
+        state["chat_history"] = list(checkin.get("chat_history", []))
+        diag_out = self._diagnostician(state) if self._diagnostician else {}
+        current_form = diag_out.get("cbt_form") or make_initial_state()["cbt_form"]
+
+        form_diff = _diff_forms(baseline_form, current_form)
+        trend = self._build_trend(checkin, base_conv, cur_conv)
+        narrative, suggestion = self._narrate(
+            baseline_form, current_form, base_conv, cur_conv, base_ev, cur_ev, status)
+
+        return {
+            "baseline_conviction": base_conv, "baseline_evidence": base_ev,
+            "current_conviction": cur_conv, "current_evidence": cur_ev,
+            "conviction_delta": delta, "status": status,
+            "current_form": current_form, "form_diff": form_diff,
+            "trend": trend, "narrative": narrative, "suggestion": suggestion,
+        }
+
+    def _build_trend(self, checkin: dict, base_conv: int, cur_conv: int) -> list[dict]:
+        baseline_id = checkin["baseline_id"]
+        others = [r for r in self._store.list_records()
+                  if r.get("baseline_id") == baseline_id
+                  and r.get("status") == "completed"
+                  and r.get("checkin_id") != checkin["checkin_id"]]
+        rows = [(r.get("created_at", ""), (r.get("report") or {}).get("current_conviction"))
+                for r in others if (r.get("report") or {}).get("current_conviction") is not None]
+        rows.append((checkin.get("created_at", ""), cur_conv))
+        rows.sort(key=lambda x: x[0])
+        pts = [{"label": "基线", "date": checkin.get("baseline_created_at", ""), "conviction": base_conv}]
+        for i, (date, conv) in enumerate(rows, start=1):
+            pts.append({"label": f"复诊{i}", "date": date, "conviction": conv})
+        return pts
+
+    def _narrate(self, baseline_form, current_form, base_conv, cur_conv,
+                 base_ev, cur_ev, status) -> tuple[str, str]:
+        if self._judge is None:
+            return "", ""
+        system = (
+            "你是一名临床CBT督导，正在对比来访者前后两次的状态变化。\n"
+            "信念确信度量表（0–100）：100=深信不疑；50=有所动摇；0=已放弃该负面信念或未体现。\n"
+            "整体状态已判定为：{status}（以确信度变化为主）。请仅基于下方已提供的信息，"
+            "客观说明各维度变化并引用证据，再给出一条温和的、基于CBT原则的下一步建议。"
+            "禁止编造未提供的信息。\n"
+            '严格输出 JSON：{{"narrative":"...","suggestion":"..."}}'
+        ).format(status=status)
+        user = (
+            f"基线诊断表：{baseline_form}\n当前诊断表：{current_form}\n"
+            f"基线确信度：{base_conv}（依据：{base_ev}）\n"
+            f"当前确信度：{cur_conv}（依据：{cur_ev}）"
+        )
+        try:
+            raw = self._judge.simple_chat(system=system, user=user, temperature=0.3)
+            parsed = self._judge.extract_json(raw) or {}
+            return str(parsed.get("narrative", "")), str(parsed.get("suggestion", ""))
+        except Exception as exc:
+            logger.warning("[Tracker] narrate failed: %s", exc)
+            return "", ""
 
     # ── 内部 ──────────────────────────────────────────────────────────────
     def _save(self, record: dict) -> None:
