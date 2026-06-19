@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@300;400;500;600&family=Noto+Sans+SC:wght@300;400;500&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="/static/css/style.css?v=3" />
+  <link rel="stylesheet" href="/static/css/style.css?v=4" />
 </head>
 <body>
 
@@ -23,6 +23,10 @@
       <button id="btn-history" class="btn btn-ghost" title="查看历史会话">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
         历史
+      </button>
+      <button id="btn-tracker" class="btn btn-ghost" title="进展追踪">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 17l6-6 4 4 7-7"/><path d="M14 8h6v6"/></svg>
+        追踪
       </button>
       <button id="btn-new-session" class="btn btn-ghost" title="开启新对话">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>
@@ -164,6 +168,17 @@
 
 </main>
 
+<!-- ── 进展追踪视图 ──────────────────────────────────────────────── -->
+<section class="tracker-view" id="tracker-view" style="display:none">
+  <div class="tracker-inner">
+    <div class="tracker-head">
+      <h2 class="tracker-title">进展追踪</h2>
+      <button class="btn btn-ghost btn-sm" id="btn-tracker-back">返回对话</button>
+    </div>
+    <div id="tracker-body"></div>
+  </div>
+</section>
+
 <!-- ── 会话历史抽屉 ──────────────────────────────────────────────── -->
 <div class="drawer-backdrop" id="drawer-backdrop"></div>
 <aside class="history-drawer" id="history-drawer" aria-hidden="true" aria-label="会话历史">
@@ -194,6 +209,6 @@
   </div>
 </template>
 
-<script src="/static/js/app.js?v=5"></script>
+<script src="/static/js/app.js?v=6"></script>
 </body>
 </html>

@@ -37,6 +37,10 @@ const el = {
   btnExportJson : $('btn-export-json'),
   btnExportMd   : $('btn-export-md'),
   btnUndo       : $('btn-undo'),
+  btnTracker    : $('btn-tracker'),
+  trackerView   : $('tracker-view'),
+  trackerBody   : $('tracker-body'),
+  btnTrackerBack: $('btn-tracker-back'),
 };
 
 /* ── 工具函数 ───────────────────────────────────────────────── */
@@ -380,6 +384,158 @@ function autoResize(textarea) {
   textarea.style.height = Math.min(textarea.scrollHeight, 140) + 'px';
 }
 
+/* ── 追踪：视图切换 ───────────────────────────────────────────── */
+const Tracker = { baselineId: null, checkinId: null };
+function showTracker() {
+  document.querySelector('.layout').style.display = 'none';
+  el.trackerView.style.display = 'block';
+  loadBaselines();
+}
+function hideTracker() {
+  el.trackerView.style.display = 'none';
+  document.querySelector('.layout').style.display = 'flex';
+}
+
+async function loadBaselines() {
+  el.trackerBody.innerHTML = '<p class="hist-empty">加载可追踪会话……</p>';
+  try {
+    const data = await (await fetch('/api/tracker/baselines')).json();
+    if (data.status !== 'ok') throw new Error(data.message);
+    renderBaselines(data.baselines || []);
+  } catch (e) {
+    el.trackerBody.innerHTML = '<p class="hist-empty">加载失败：' + escHtml(e.message) + '</p>';
+  }
+}
+function renderBaselines(list) {
+  if (!list.length) { el.trackerBody.innerHTML = '<p class="hist-empty">还没有可追踪的会话</p>'; return; }
+  const wrap = document.createElement('div');
+  wrap.className = 'tracker-baselines';
+  list.forEach(b => {
+    const row = document.createElement('div');
+    row.className = 'hist-row';
+    const badge = b.cognitive_distortion ? `<span class="hist-badge">${escHtml(b.cognitive_distortion)}</span>` : '';
+    row.innerHTML = `<div class="hist-title">${escHtml(b.title || '(空会话)')}</div>
+      <div class="hist-meta"><span>${formatDate(b.last_active)}</span><span>· ${b.turn_count} 轮</span>${badge}</div>`;
+    const btn = document.createElement('button');
+    btn.className = 'btn btn-primary btn-sm';
+    btn.textContent = '开始复诊';
+    btn.addEventListener('click', () => startCheckin(b.session_id));
+    row.appendChild(btn);
+    wrap.appendChild(row);
+  });
+  el.trackerBody.innerHTML = '';
+  el.trackerBody.appendChild(wrap);
+}
+
+async function startCheckin(baselineId) {
+  try {
+    const data = await (await fetch('/api/tracker/start', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ baseline_id: baselineId }),
+    })).json();
+    if (data.status !== 'ok') throw new Error(data.message);
+    Tracker.baselineId = baselineId;
+    Tracker.checkinId = data.checkin_id;
+    renderCheckinUI(data.question, data.q_index, data.total);
+  } catch (e) { showToast('开始复诊失败：' + e.message); }
+}
+
+function renderCheckinUI(question, qIndex, total) {
+  el.trackerBody.innerHTML = `
+    <div class="checkin-progress">复诊中 · 第 ${qIndex + 1}/${total} 问</div>
+    <div class="checkin-msgs" id="checkin-msgs"></div>
+    <div class="input-bar-inner" style="margin-top:12px">
+      <textarea id="checkin-input" class="user-input" rows="1" placeholder="说说你的近况……"></textarea>
+      <button class="btn btn-send" id="checkin-send" aria-label="发送">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M22 2L11 13"/><path d="M22 2L15 22l-4-9-9-4 20-7z"/></svg>
+      </button>
+    </div>`;
+  appendCheckinMsg('ai', question);
+  $('checkin-send').addEventListener('click', sendCheckin);
+  $('checkin-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendCheckin(); }
+  });
+  $('checkin-input').focus();
+}
+function appendCheckinMsg(role, text) {
+  const box = $('checkin-msgs');
+  const wrap = document.createElement('div');
+  wrap.className = 'msg-wrap ' + (role === 'user' ? 'msg-wrap-user' : 'msg-wrap-ai');
+  const row = document.createElement('div');
+  row.className = 'msg ' + (role === 'user' ? 'msg-user' : 'msg-ai');
+  row.innerHTML = `<div class="msg-avatar">${role === 'user' ? '&#128100;' : '&#9775;'}</div><div class="msg-bubble"></div>`;
+  row.querySelector('.msg-bubble').textContent = text;
+  wrap.appendChild(row);
+  box.appendChild(wrap);
+  box.scrollTop = box.scrollHeight;
+}
+async function sendCheckin() {
+  const input = $('checkin-input');
+  const text = input.value.trim();
+  if (!text) return;
+  appendCheckinMsg('user', text);
+  input.value = '';
+  input.disabled = true;
+  try {
+    const data = await (await fetch('/api/tracker/message', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ checkin_id: Tracker.checkinId, message: text }),
+    })).json();
+    if (data.status !== 'ok') { showToast(data.message || '出错'); input.disabled = false; return; }
+    if (data.done) { renderReport(data.report); }
+    else {
+      input.disabled = false;
+      appendCheckinMsg('ai', data.question);
+      const p = document.querySelector('.checkin-progress');
+      if (p) p.textContent = `复诊中 · 第 ${data.q_index + 1}/${data.total} 问`;
+      input.focus();
+    }
+  } catch (e) { showToast('发送失败：' + e.message); input.disabled = false; }
+}
+
+function renderReport(report) {
+  const statusColor = { '改善': 'var(--dot-thought)', '持平': 'var(--text-muted)', '恶化': 'var(--accent)' };
+  const rows = (report.form_diff || []).map(d => {
+    const label = { same: '不变', changed: '改变', not_reassessed: '未重评', new: '新增' }[d.change] || d.change;
+    return `<tr><td>${escHtml(d.dimension)}</td><td>${escHtml(d.before || '—')}</td>
+            <td>${escHtml(d.after || '—')}</td><td>${label}</td></tr>`;
+  }).join('');
+  el.trackerBody.innerHTML = `
+    <div class="report-status">整体状态：<b style="color:${statusColor[report.status] || 'inherit'}">${escHtml(report.status)}</b>
+      <span class="report-sub">确信度 ${report.baseline_conviction} → ${report.current_conviction}（Δ ${report.conviction_delta >= 0 ? '+' : ''}${report.conviction_delta}，下降为好转）</span></div>
+    <div class="report-chart">${renderTrendChart(report.trend || [])}</div>
+    <h3 class="report-h">逐维度对比</h3>
+    <table class="report-table"><thead><tr><th>维度</th><th>上次</th><th>这次</th><th>变化</th></tr></thead><tbody>${rows}</tbody></table>
+    <h3 class="report-h">分析</h3>
+    <p class="report-narr">${escHtml(report.narrative || '—')}</p>
+    <h3 class="report-h">建议</h3>
+    <p class="report-narr">${escHtml(report.suggestion || '—')}</p>
+    <button class="btn btn-ghost btn-sm" id="btn-tracker-home" style="margin-top:16px">返回追踪首页</button>`;
+  $('btn-tracker-home').addEventListener('click', loadBaselines);
+}
+
+/* 无依赖 SVG 折线趋势图。conviction 越低越好，y 轴反向。 */
+function renderTrendChart(points) {
+  if (!points.length) return '<p class="hist-empty">暂无趋势数据</p>';
+  const W = 520, H = 180, pad = 36;
+  const xs = points.length > 1 ? points.length - 1 : 1;
+  const coords = points.map((p, i) => {
+    const x = pad + (W - 2 * pad) * (i / xs);
+    const y = pad + (H - 2 * pad) * ((p.conviction || 0) / 100);
+    return { x, y, p };
+  });
+  const line = coords.map((c, i) => (i ? 'L' : 'M') + c.x.toFixed(1) + ' ' + c.y.toFixed(1)).join(' ');
+  const dots = coords.map(c =>
+    `<circle cx="${c.x.toFixed(1)}" cy="${c.y.toFixed(1)}" r="4" fill="var(--accent)"/>
+     <text x="${c.x.toFixed(1)}" y="${(c.y - 10).toFixed(1)}" text-anchor="middle" font-size="11" fill="var(--text-secondary)">${c.p.conviction}</text>
+     <text x="${c.x.toFixed(1)}" y="${H - 12}" text-anchor="middle" font-size="11" fill="var(--text-muted)">${escHtml(c.p.label)}</text>`
+  ).join('');
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="确信度趋势图">
+    <line x1="${pad}" y1="${pad}" x2="${pad}" y2="${H - pad}" stroke="var(--border)"/>
+    <line x1="${pad}" y1="${H - pad}" x2="${W - pad}" y2="${H - pad}" stroke="var(--border)"/>
+    <path d="${line}" fill="none" stroke="var(--accent-light)" stroke-width="2"/>${dots}</svg>`;
+}
+
 /* ── 事件绑定 ────────────────────────────────────────────────── */
 el.btnStart.addEventListener('click', async () => {
   const opening = el.welcomeInput.value.trim();
@@ -418,6 +574,8 @@ el.drawerBackdrop.addEventListener('click', closeHistory);
 el.btnExportJson.addEventListener('click', () => exportSession(State.sessionId, 'json'));
 el.btnExportMd.addEventListener('click', () => exportSession(State.sessionId, 'md'));
 el.btnUndo.addEventListener('click', undoLastTurn);
+el.btnTracker.addEventListener('click', showTracker);
+el.btnTrackerBack.addEventListener('click', hideTracker);
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape' && el.drawer.classList.contains('show')) closeHistory();
 });
