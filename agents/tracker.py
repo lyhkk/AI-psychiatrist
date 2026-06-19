@@ -39,6 +39,8 @@ class TrackerNode:
         emotion = (baseline_form or {}).get("emotion")
         thought = (baseline_form or {}).get("automatic_thought")
 
+        # 注：cognitive_distortion 不单独成问句——其变化在报告阶段对比，
+        # 复诊只重探可观测的 情境/自动思维/情绪/应对。
         questions: list[str] = []
         if situation:
             questions.append(

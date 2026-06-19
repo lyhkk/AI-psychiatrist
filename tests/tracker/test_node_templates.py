@@ -28,7 +28,7 @@ def test_empty_form_yields_only_coping_question():
     qs = node.build_questions({"situation": None, "emotion": None,
                                "automatic_thought": None, "cognitive_distortion": None})
     assert len(qs) == 1, qs
-    assert qs[0]  # the coping fallback question
+    assert "应对" in qs[0]  # the coping fallback question
 
 
 if __name__ == "__main__":
